@@ -74,9 +74,12 @@
   let draggingTokenPointerId = null;
   let draggingTokenStart = null;
   const TOKEN_DEFAULT_SIZE = 50;
-  let tokenCreationCount = 0;
-  const TOKEN_PRIMARY_COLORS = ["#ef4444", "#3b82f6", "#fbbf24"];
-  const TOKEN_SECONDARY_TERTIARY_COLORS = ["#10b981", "#f97316", "#a855f7", "#ec4899", "#06b6d4", "#84cc16"];
+  const TOKEN_COLORS = [
+    "#ef4444", "#3b82f6", "#fbbf24", "#10b981", "#f97316",
+    "#a855f7", "#ec4899", "#06b6d4", "#84cc16", "#f59e0b",
+    "#8b5cf6", "#14b8a6", "#f43f5e", "#7c3aed", "#06b6d4"
+  ];
+  let lastTokenColor = null;
 
   // =====================
   // LOAD SAVED GAME DATA
@@ -236,10 +239,11 @@
   }
 
   function getNextTokenBorderColor() {
-    const usePrimary = tokenCreationCount < 3;
-    const pool = usePrimary ? TOKEN_PRIMARY_COLORS : TOKEN_SECONDARY_TERTIARY_COLORS;
-    const color = pool[Math.floor(Math.random() * pool.length)];
-    tokenCreationCount++;
+    let color;
+    do {
+      color = TOKEN_COLORS[Math.floor(Math.random() * TOKEN_COLORS.length)];
+    } while (color === lastTokenColor && TOKEN_COLORS.length > 1);
+    lastTokenColor = color;
     return color;
   }
 
@@ -558,6 +562,68 @@
   }
 
   // =====================
+  // DRAW TOKEN MOVEMENT PATH & DISTANCE
+  // =====================
+  function drawMovementPath() {
+    if (!draggingToken || !draggingTokenStart || state.grid.metersPerCell === null) return;
+
+    const startScreen = worldToScreen(draggingTokenStart);
+    const currentScreen = worldToScreen({ x: draggingToken.x, y: draggingToken.y });
+    const dx = currentScreen.x - startScreen.x;
+    const dy = currentScreen.y - startScreen.y;
+    const lineLength = Math.hypot(dx, dy);
+
+    // Desenhar linha
+    ctx.strokeStyle = "#90ee90";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(startScreen.x, startScreen.y);
+    ctx.lineTo(currentScreen.x, currentScreen.y);
+    ctx.stroke();
+
+    // Calcular distância em metros
+    const cellSize = getCellSize();
+    const distanceCells = Math.hypot(draggingToken.x - draggingTokenStart.x, draggingToken.y - draggingTokenStart.y);
+    const meters = distanceCells * state.grid.metersPerCell;
+    const label = meters.toFixed(1) + "m";
+
+    // Posicionar o contador de forma inteligente (offset perpendicular à linha)
+    const centerX = (startScreen.x + currentScreen.x) / 2;
+    const centerY = (startScreen.y + currentScreen.y) / 2;
+    const offsetDistance = 60; // Distância do label em relação à linha
+    let offsetX = 0;
+    let offsetY = -offsetDistance;
+
+    if (lineLength > 0.5) {
+      // Calcular perpendicular à linha para não cobrir a linha
+      const normalX = -dy / lineLength;
+      const normalY = dx / lineLength;
+      offsetX = normalX * offsetDistance;
+      offsetY = normalY * offsetDistance;
+    }
+
+    const labelX = centerX + offsetX;
+    const labelY = centerY + offsetY;
+    const paddingX = 10;
+    const paddingY = 6;
+
+    // Desenhar fundo do contador
+    ctx.font = "bold 12px sans-serif";
+    const textWidth = ctx.measureText(label).width;
+    const boxWidth = textWidth + paddingX * 2;
+    const boxHeight = 22;
+
+    ctx.fillStyle = "rgba(0,0,0,0.8)";
+    ctx.fillRect(labelX - boxWidth / 2, labelY - boxHeight / 2, boxWidth, boxHeight);
+    
+    // Desenhar texto do contador
+    ctx.fillStyle = "#90ee90";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, labelX, labelY + 0.5);
+  }
+
+  // =====================
   // DRAW RENDER LOOP
   // =====================
   function draw() {
@@ -566,6 +632,7 @@
     drawGrid();
     drawImage();
     drawTokens();
+    drawMovementPath();
     
     // Atualizar réguas
     drawTopRuler();
