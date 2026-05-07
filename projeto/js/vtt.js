@@ -55,6 +55,7 @@
   // =====================
   let camera = { x: 0, y: 0 };
   let isDragging = false;
+  let activePointerId = null;
   let lastMouse = { x: 0, y: 0 };
   let width = 0;
   let height = 0;
@@ -211,28 +212,42 @@
   };
 
   // =====================
-  // CAMERA DRAG
+  // CAMERA DRAG (MOUSE + TOUCH)
   // =====================
-  canvas.onmousedown = (e) => {
+  function onPointerDown(e) {
+    // Com mouse, arrasta apenas com o botão principal.
+    if (e.pointerType === "mouse" && e.button !== 0) return;
     isDragging = true;
-    lastMouse.x = e.clientX - 50; // Offset pela régua esquerda
-    lastMouse.y = e.clientY - 30; // Offset pela régua topo
-  };
+    activePointerId = e.pointerId;
+    lastMouse.x = e.clientX;
+    lastMouse.y = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }
 
-  window.onmouseup = () => {
-    isDragging = false;
-  };
-
-  window.onmousemove = (e) => {
-    if (!isDragging) return;
-    const dx = (e.clientX - 50) - lastMouse.x; // Offset
-    const dy = (e.clientY - 30) - lastMouse.y; // Offset
+  function onPointerMove(e) {
+    if (!isDragging || e.pointerId !== activePointerId) return;
+    const dx = e.clientX - lastMouse.x;
+    const dy = e.clientY - lastMouse.y;
     camera.x += dx;
     camera.y += dy;
-    lastMouse.x = (e.clientX - 50);
-    lastMouse.y = (e.clientY - 30);
+    lastMouse.x = e.clientX;
+    lastMouse.y = e.clientY;
     draw();
-  };
+    e.preventDefault();
+  }
+
+  function stopDragging(e) {
+    if (e.pointerId !== activePointerId) return;
+    isDragging = false;
+    activePointerId = null;
+  }
+
+  canvas.addEventListener("pointerdown", onPointerDown);
+  canvas.addEventListener("pointermove", onPointerMove);
+  canvas.addEventListener("pointerup", stopDragging);
+  canvas.addEventListener("pointercancel", stopDragging);
+  canvas.addEventListener("lostpointercapture", stopDragging);
 
   // =====================
   // DRAW IMAGE

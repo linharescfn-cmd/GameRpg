@@ -325,6 +325,7 @@ canvas#canvas{
   position:absolute;
   top:30px !important;
   left:50px !important;
+  touch-action:none;
 }
 
 /* Grid Scale Control (Zoom buttons) */
