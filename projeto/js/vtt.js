@@ -201,53 +201,143 @@
   // =====================
   // GRID ZOOM CONTROLS
   // =====================
-  gridZoomIn.onclick = () => {
-    state.grid.cellMultiplier *= 1.2;
-    draw();
-  };
+  if (gridZoomIn) {
+    gridZoomIn.onclick = () => {
+      state.grid.cellMultiplier *= 1.2;
+      draw();
+    };
+  }
 
-  gridZoomOut.onclick = () => {
-    state.grid.cellMultiplier *= 0.8;
-    draw();
-  };
+  if (gridZoomOut) {
+    gridZoomOut.onclick = () => {
+      state.grid.cellMultiplier *= 0.8;
+      draw();
+    };
+  }
 
   // =====================
-  // CAMERA DRAG (MOUSE + TOUCH)
+  // CAMERA DRAG / PINCH / WHEEL ZOOM
   // =====================
+  const pointers = new Map();
+  let pinchState = null;
+  const MIN_ZOOM = 0.25;
+  const MAX_ZOOM = 4;
+
+  function getCellSize(z) {
+    const zval = typeof z === 'number' ? z : zoom;
+    return BASE * state.grid.cellMultiplier * zval;
+  }
+
+  function getCanvasPoint(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  function screenToWorld(pt) {
+    const scale = getCellSize();
+    return { x: (pt.x - camera.x) / scale, y: (pt.y - camera.y) / scale };
+  }
+
+  function worldToScreen(wp) {
+    const scale = getCellSize();
+    return { x: wp.x * scale + camera.x, y: wp.y * scale + camera.y };
+  }
+
+  function setZoom(newZoom, screenX, screenY) {
+    newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+    if (newZoom === zoom) return;
+    // manter o ponto do mundo sob (screenX,screenY)
+    const oldScale = getCellSize(zoom);
+    const wx = (screenX - camera.x) / oldScale;
+    const wy = (screenY - camera.y) / oldScale;
+    zoom = newZoom;
+    const newScale = getCellSize(zoom);
+    camera.x = screenX - wx * newScale;
+    camera.y = screenY - wy * newScale;
+    draw();
+  }
+
+  function distance(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  function midpoint(a, b) {
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+
   function onPointerDown(e) {
-    // Com mouse, arrasta apenas com o botão principal.
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    isDragging = true;
-    activePointerId = e.pointerId;
-    lastMouse.x = e.clientX;
-    lastMouse.y = e.clientY;
+    const pt = getCanvasPoint(e);
+    pointers.set(e.pointerId, pt);
     canvas.setPointerCapture(e.pointerId);
+
+    if (pointers.size === 1) {
+      isDragging = true;
+      activePointerId = e.pointerId;
+      lastMouse = pt;
+    } else if (pointers.size === 2) {
+      const ps = Array.from(pointers.values());
+      pinchState = {
+        startDistance: distance(ps[0], ps[1]),
+        startZoom: zoom,
+        center: midpoint(ps[0], ps[1])
+      };
+      isDragging = false;
+      activePointerId = null;
+    }
     e.preventDefault();
   }
 
   function onPointerMove(e) {
-    if (!isDragging || e.pointerId !== activePointerId) return;
-    const dx = e.clientX - lastMouse.x;
-    const dy = e.clientY - lastMouse.y;
-    camera.x += dx;
-    camera.y += dy;
-    lastMouse.x = e.clientX;
-    lastMouse.y = e.clientY;
-    draw();
-    e.preventDefault();
+    if (!pointers.has(e.pointerId)) return;
+    const pt = getCanvasPoint(e);
+    pointers.set(e.pointerId, pt);
+
+    if (pinchState && pointers.size >= 2) {
+      const ps = Array.from(pointers.values());
+      const currDist = distance(ps[0], ps[1]);
+      if (pinchState.startDistance > 0) {
+        const factor = currDist / pinchState.startDistance;
+        setZoom(pinchState.startZoom * factor, pinchState.center.x, pinchState.center.y);
+      }
+      e.preventDefault();
+      return;
+    }
+
+    if (isDragging && e.pointerId === activePointerId) {
+      const dx = pt.x - lastMouse.x;
+      const dy = pt.y - lastMouse.y;
+      camera.x += dx;
+      camera.y += dy;
+      lastMouse = pt;
+      draw();
+      e.preventDefault();
+    }
   }
 
-  function stopDragging(e) {
-    if (e.pointerId !== activePointerId) return;
-    isDragging = false;
-    activePointerId = null;
+  function onPointerUp(e) {
+    pointers.delete(e.pointerId);
+    try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+    if (e.pointerId === activePointerId) {
+      isDragging = false;
+      activePointerId = null;
+    }
+    if (pointers.size < 2) pinchState = null;
   }
 
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
-  canvas.addEventListener("pointerup", stopDragging);
-  canvas.addEventListener("pointercancel", stopDragging);
-  canvas.addEventListener("lostpointercapture", stopDragging);
+  canvas.addEventListener("pointerup", onPointerUp);
+  canvas.addEventListener("pointercancel", onPointerUp);
+  canvas.addEventListener("lostpointercapture", onPointerUp);
+
+  // Wheel zoom (afeta apenas grid e imagem)
+  canvas.addEventListener("wheel", (e) => {
+    const pt = getCanvasPoint(e);
+    const zoomFactor = Math.exp(-e.deltaY * 0.0015);
+    setZoom(zoom * zoomFactor, pt.x, pt.y);
+    e.preventDefault();
+  }, { passive: false });
 
   // =====================
   // DRAW IMAGE
