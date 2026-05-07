@@ -1,0 +1,432 @@
+ <!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VTT Prototype</title>
+
+<style>
+body { margin:0; overflow:hidden; font-family:Arial; }
+
+#toggleBtn{
+      position:fixed;
+        top:10px;
+          left:10px;
+            z-index:10;
+              width:50px;
+                height:50px;
+                  background:#222;
+                    color:white;
+                      border:none;
+                        cursor:pointer;
+                          border-radius:4px;
+}
+
+#sidebar{
+      position:fixed;
+        top:0;
+          left:0;
+            width:240px;
+              height:100%;
+                background:#1e1e1e;
+                  color:white;
+                    padding:15px;
+                      z-index:9;
+                        transition:transform 0.3s ease;
+}
+
+canvas{
+      position:absolute;
+        top:0;
+          left:0;
+}
+
+#gridScaleControl{
+      position:fixed;
+        bottom:20px;
+          right:20px;
+            z-index:999;
+              display:flex;
+                flex-direction:column;
+                  gap:6px;
+}
+
+#gridScaleControl button{
+      width:50px;
+        height:50px;
+          background:#222;
+            color:white;
+              border:none;
+                border-radius:6px;
+                  cursor:pointer;
+}
+
+#mapEditControls button{
+      margin:2px;
+        width:35px;
+          height:35px;
+}
+</style>
+</head>
+
+<body>
+
+<button id="toggleBtn">☰</button>
+
+<div id="sidebar">
+
+  <h3>Ferramentas</h3>
+
+    <div id="scaleBox">
+        <input type="number" id="cellMeters" placeholder="metros por célula">
+            <button id="applyScale">Aplicar escala</button>
+                <div id="scaleInfo" style="margin-top:8px;"></div>
+                  </div>
+
+                    <hr>
+
+                      <div id="mapSetup">
+                          <input type="file" id="imgUpload">
+
+                              <label>Largura (células)</label>
+                                  <input type="number" id="imgW" value="10">
+
+                                      <label>Altura (células)</label>
+                                          <input type="number" id="imgH" value="10">
+
+                                              <button id="applyMap">Aplicar mapa</button>
+                                                </div>
+
+                                                  <div id="mapEditControls" style="display:none;margin-top:10px;">
+                                                      <div><b id="mapNameLabel"></b></div>
+
+                                                          <div style="margin-top:8px;">
+                                                                <span>Largura:</span><br>
+                                                                      <button id="mapWMinus">-</button>
+                                                                            <button id="mapWPlus">+</button>
+                                                                                  <span id="mapWValue"></span>
+                                                                                      </div>
+
+                                                                                          <div style="margin-top:8px;">
+                                                                                                <span>Altura:</span><br>
+                                                                                                      <button id="mapHMinus">-</button>
+                                                                                                            <button id="mapHPlus">+</button>
+                                                                                                                  <span id="mapHValue"></span>
+                                                                                                                      </div>
+                                                                                                                        </div>
+
+                                                                                                                        </div>
+
+                                                                                                                        <div id="gridScaleControl">
+                                                                                                                          <button id="gridZoomIn">➕</button>
+                                                                                                                            <button id="gridZoomOut">➖</button>
+                                                                                                                            </div>
+
+                                                                                                                            <canvas id="canvas"></canvas>
+
+                                                                                                                            <script>
+
+                                                                                                                            // =====================
+                                                                                                                            // DOM
+                                                                                                                            // =====================
+                                                                                                                            const sidebar = document.getElementById("sidebar");
+                                                                                                                            const toggleBtn = document.getElementById("toggleBtn");
+
+                                                                                                                            const scaleInput = document.getElementById("cellMeters");
+                                                                                                                            const scaleBtn = document.getElementById("applyScale");
+                                                                                                                            const scaleInfo = document.getElementById("scaleInfo");
+
+                                                                                                                            const imgUpload = document.getElementById("imgUpload");
+                                                                                                                            const imgW = document.getElementById("imgW");
+                                                                                                                            const imgH = document.getElementById("imgH");
+                                                                                                                            const applyMapBtn = document.getElementById("applyMap");
+
+                                                                                                                            const mapNameLabel = document.getElementById("mapNameLabel");
+                                                                                                                            const mapWValue = document.getElementById("mapWValue");
+                                                                                                                            const mapHValue = document.getElementById("mapHValue");
+
+                                                                                                                            const mapWPlus = document.getElementById("mapWPlus");
+                                                                                                                            const mapWMinus = document.getElementById("mapWMinus");
+                                                                                                                            const mapHPlus = document.getElementById("mapHPlus");
+                                                                                                                            const mapHMinus = document.getElementById("mapHMinus");
+
+                                                                                                                            const gridZoomIn = document.getElementById("gridZoomIn");
+                                                                                                                            const gridZoomOut = document.getElementById("gridZoomOut");
+
+                                                                                                                            // =====================
+                                                                                                                            // STATE
+                                                                                                                            // =====================
+                                                                                                                            const state = {
+                                                                                                                                  ui:{sidebarOpen:true},
+                                                                                                                                    grid:{
+                                                                                                                                            cellMultiplier:1,
+                                                                                                                                                metersPerCell:null
+                                                                                                                                    },
+                                                                                                                                      image:{
+                                                                                                                                            src:null,
+                                                                                                                                                widthCells:10,
+                                                                                                                                                    heightCells:10,
+                                                                                                                                                        anchor:{col:3,row:3},
+                                                                                                                                                            name:null,
+                                                                                                                                                                active:false
+                                                                                                                                      }
+                                                                                                                            };
+
+                                                                                                                            // =====================
+                                                                                                                            // CAMERA (FIX 4)
+                                                                                                                            // =====================
+                                                                                                                            let camera = { x: 0, y: 0 };
+                                                                                                                            let isDragging = false;
+                                                                                                                            let lastMouse = { x: 0, y: 0 };
+
+                                                                                                                            // =====================
+                                                                                                                            // SIDEBAR
+                                                                                                                            // =====================
+                                                                                                                            toggleBtn.onclick=()=>{
+                                                                                                                                  state.ui.sidebarOpen=!state.ui.sidebarOpen;
+
+                                                                                                                                    sidebar.style.transform = state.ui.sidebarOpen
+                                                                                                                                        ? "translateX(0)"
+                                                                                                                                            : "translateX(-100%)";
+                                                                                                                            };
+
+                                                                                                                            // =====================
+                                                                                                                            // ESCALA
+                                                                                                                            // =====================
+                                                                                                                            scaleBtn.onclick=()=>{
+                                                                                                                                  const value=parseFloat(scaleInput.value);
+                                                                                                                                    if(!value || value<=0) return;
+
+                                                                                                                                      state.grid.metersPerCell=value;
+                                                                                                                                        scaleInfo.innerHTML = `Proporção: <b>${value} m por célula</b>`;
+                                                                                                                            };
+
+                                                                                                                            // =====================
+                                                                                                                            // CANVAS
+                                                                                                                            // =====================
+                                                                                                                            const canvas=document.getElementById("canvas");
+                                                                                                                            const ctx=canvas.getContext("2d");
+
+                                                                                                                            let width,height;
+                                                                                                                            let zoom=1;
+
+                                                                                                                            const BASE=80;
+
+                                                                                                                            // =====================
+                                                                                                                            // MAPA
+                                                                                                                            // =====================
+                                                                                                                            let imgObj=null;
+                                                                                                                            let pendingImg=null;
+                                                                                                                            let pendingName=null;
+
+                                                                                                                            imgUpload.onchange=e=>{
+                                                                                                                                  const file=e.target.files[0];
+                                                                                                                                    if(!file) return;
+
+                                                                                                                                      pendingName=file.name.replace(/\.[^/.]+$/,"");
+
+                                                                                                                                        const reader=new FileReader();
+                                                                                                                                          reader.onload=ev=>{
+                                                                                                                                                pendingImg=new Image();
+                                                                                                                                                    pendingImg.src=ev.target.result;
+                                                                                                                                          };
+                                                                                                                                            reader.readAsDataURL(file);
+                                                                                                                            };
+
+                                                                                                                            applyMapBtn.onclick=()=>{
+                                                                                                                                  if(!pendingImg) return alert("Selecione uma imagem");
+
+                                                                                                                                    state.image.src=pendingImg.src;
+                                                                                                                                      state.image.widthCells=parseInt(imgW.value)||10;
+                                                                                                                                        state.image.heightCells=parseInt(imgH.value)||10;
+                                                                                                                                          state.image.name=pendingName;
+                                                                                                                                            state.image.active=true;
+
+                                                                                                                                              imgObj=pendingImg;
+
+                                                                                                                                                document.getElementById("mapSetup").style.display="none";
+                                                                                                                                                  document.getElementById("mapEditControls").style.display="block";
+
+                                                                                                                                                    updateMapUI();
+                                                                                                                                                      draw();
+                                                                                                                            };
+
+                                                                                                                            // =====================
+                                                                                                                            // MAP UI
+                                                                                                                            // =====================
+                                                                                                                            function updateMapUI(){
+                                                                                                                                  mapNameLabel.innerText="Mapa ativo: "+state.image.name;
+                                                                                                                                    mapWValue.innerText=state.image.widthCells;
+                                                                                                                                      mapHValue.innerText=state.image.heightCells;
+                                                                                                                            }
+
+                                                                                                                            mapWPlus.onclick=()=>{
+                                                                                                                                  state.image.widthCells++;
+                                                                                                                                    updateMapUI();
+                                                                                                                                      draw();
+                                                                                                                            };
+
+                                                                                                                            mapWMinus.onclick=()=>{
+                                                                                                                                  if(state.image.widthCells<=1) return;
+                                                                                                                                    state.image.widthCells--;
+                                                                                                                                      updateMapUI();
+                                                                                                                                        draw();
+                                                                                                                            };
+
+                                                                                                                            mapHPlus.onclick=()=>{
+                                                                                                                                  state.image.heightCells++;
+                                                                                                                                    updateMapUI();
+                                                                                                                                      draw();
+                                                                                                                            };
+
+                                                                                                                            mapHMinus.onclick=()=>{
+                                                                                                                                  if(state.image.heightCells<=1) return;
+                                                                                                                                    state.image.heightCells--;
+                                                                                                                                      updateMapUI();
+                                                                                                                                        draw();
+                                                                                                                            };
+
+                                                                                                                            // =====================
+                                                                                                                            // GRID ZOOM
+                                                                                                                            // =====================
+                                                                                                                            gridZoomIn.onclick=()=>{
+                                                                                                                                  state.grid.cellMultiplier*=1.2;
+                                                                                                                                    draw();
+                                                                                                                            };
+
+                                                                                                                            gridZoomOut.onclick=()=>{
+                                                                                                                                  state.grid.cellMultiplier*=0.8;
+                                                                                                                                    draw();
+                                                                                                                            };
+
+                                                                                                                            // =====================
+                                                                                                                            // CAMERA DRAG (FIX 4)
+                                                                                                                            // =====================
+                                                                                                                            canvas.onmousedown = (e) => {
+                                                                                                                                  isDragging = true;
+                                                                                                                                    lastMouse.x = e.clientX;
+                                                                                                                                      lastMouse.y = e.clientY;
+                                                                                                                            };
+
+                                                                                                                            window.onmouseup = () => {
+                                                                                                                                  isDragging = false;
+                                                                                                                            };
+
+                                                                                                                            window.onmousemove = (e) => {
+                                                                                                                                  if (!isDragging) return;
+
+                                                                                                                                    const dx = e.clientX - lastMouse.x;
+                                                                                                                                      const dy = e.clientY - lastMouse.y;
+
+                                                                                                                                        camera.x += dx;
+                                                                                                                                          camera.y += dy;
+
+                                                                                                                                            lastMouse.x = e.clientX;
+                                                                                                                                              lastMouse.y = e.clientY;
+
+                                                                                                                                                draw();
+                                                                                                                            };
+
+                                                                                                                            // =====================
+                                                                                                                            // DRAW
+                                                                                                                            // =====================
+                                                                                                                            function drawImage(){
+                                                                                                                                  if(!state.image.active || !imgObj) return;
+
+                                                                                                                                    const size=BASE*state.grid.cellMultiplier*zoom;
+
+                                                                                                                                      const x=state.image.anchor.col*size+camera.x;
+                                                                                                                                        const y=state.image.anchor.row*size+camera.y;
+
+                                                                                                                                          const w=state.image.widthCells*size;
+                                                                                                                                            const h=state.image.heightCells*size;
+
+                                                                                                                                              ctx.drawImage(imgObj,x,y,w,h);
+                                                                                                                            }
+
+                                                                                                                            // GRID (já corrigido antes)
+                                                                                                                            function drawGrid(){
+                                                                                                                                  const size = BASE * state.grid.cellMultiplier * zoom;
+
+                                                                                                                                    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+
+                                                                                                                                      let offsetX = camera.x % size;
+                                                                                                                                        if (offsetX < 0) offsetX += size;
+
+                                                                                                                                          let offsetY = camera.y % size;
+                                                                                                                                            if (offsetY < 0) offsetY += size;
+
+                                                                                                                                              for (let x = offsetX; x < width; x += size) {
+                                                                                                                                                    ctx.beginPath();
+                                                                                                                                                        ctx.moveTo(x, 0);
+                                                                                                                                                            ctx.lineTo(x, height);
+                                                                                                                                                                ctx.stroke();
+                                                                                                                                              }
+
+                                                                                                                                                for (let y = offsetY; y < height; y += size) {
+                                                                                                                                                        ctx.beginPath();
+                                                                                                                                                            ctx.moveTo(0, y);
+                                                                                                                                                                ctx.lineTo(width, y);
+                                                                                                                                                                    ctx.stroke();
+                                                                                                                                                }
+                                                                                                                            }
+
+                                                                                                                            // =====================
+                                                                                                                            // RENDER
+                                                                                                                            // =====================
+                                                                                                                            function draw(){
+                                                                                                                                  ctx.fillStyle="#2f2f2f";
+                                                                                                                                    ctx.fillRect(0,0,width,height);
+
+                                                                                                                                      drawGrid();
+                                                                                                                                        drawImage();
+                                                                                                                            }
+
+                                                                                                                            // =====================
+                                                                                                                            // RESIZE
+                                                                                                                            // =====================
+                                                                                                                            function resize(){
+                                                                                                                                  width=innerWidth;
+                                                                                                                                    height=innerHeight;
+                                                                                                                                      canvas.width=width;
+                                                                                                                                        canvas.height=height;
+                                                                                                                                          draw();
+                                                                                                                            }
+
+                                                                                                                            window.addEventListener("resize",resize);
+                                                                                                                            resize();
+
+                                                                                                                            </script>
+
+                                                                                                                            </body>
+                                                                                                                            </html>
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                                                }
+                                                                                                                                              }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                                          }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                            }
+                                                                                                                                      }
+                                                                                                                                    }
+                                                                                                                            }
+}
+}
+}
+}
+}
+}

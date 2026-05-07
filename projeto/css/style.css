@@ -1,0 +1,429 @@
+/* style.css — estilos para GameRpg (index + tool pages) */
+:root{
+  --bg:#f8f9fb;
+  --panel:#ffffff;
+  --muted:#666;
+  --accent:#3b82f6;
+  --dark-bg:#2f2f2f;
+  --sidebar-bg:#1e1e1e;
+  --dark-text:#ffffff;
+  --dark-muted:#aaa;
+}
+
+html,body{
+  height:100%;
+  margin:0;
+  font-family:Inter, Roboto, Arial, sans-serif;
+  background:var(--bg);
+  color:#222;
+}
+
+/* ============================================
+   DARK THEME (index.html)
+   ============================================ */
+body.dark-theme{
+  background:linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  color:var(--dark-text);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  margin:0;
+  padding:0;
+}
+
+/* Game Master Container */
+.game-master-container{
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  box-sizing:border-box;
+}
+
+/* Game Master Card (Square with rounded corners) */
+.game-master-card{
+  background:linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+  border:2px solid #3b82f6;
+  border-radius:20px;
+  padding:60px;
+  width:100%;
+  max-width:500px;
+  aspect-ratio:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 20px 60px rgba(59, 130, 246, 0.3);
+  gap:40px;
+}
+
+/* Game Master Title */
+.game-master-title{
+  margin:0;
+  font-size:2.5rem;
+  font-weight:bold;
+  color:var(--dark-text);
+  text-align:center;
+  letter-spacing:1px;
+  background:linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+/* Button Group */
+.button-group{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+  width:100%;
+}
+
+/* Generic Button Styles */
+.btn{
+  padding:16px 32px;
+  border:none;
+  border-radius:10px;
+  font-size:1.1rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.3s ease;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+  box-shadow:0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.btn:hover{
+  transform:translateY(-3px);
+  box-shadow:0 15px 40px rgba(0, 0, 0, 0.5);
+}
+
+.btn:active{
+  transform:translateY(-1px);
+}
+
+/* Primary Button (Carregar Novo Jogo) */
+.btn-primary{
+  background:linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color:white;
+}
+
+.btn-primary:hover{
+  background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+/* Secondary Button (Buscar Jogo Salvo) */
+.btn-secondary{
+  background:linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color:white;
+  border:2px solid #10b981;
+}
+
+.btn-secondary:hover{
+  background:linear-gradient(135deg, #059669 0%, #047857 100%);
+  border-color:#047857;
+}
+
+body{
+  padding:18px;
+}
+
+h1{
+  margin:0 0 12px;
+  font-size:1.6rem;
+  color:var(--accent);
+}
+
+ul{
+  padding-left:18px;
+}
+
+a{
+  color:var(--accent);
+  text-decoration:none;
+}
+
+a:hover{
+  text-decoration:underline;
+}
+
+/* ============================================
+   VTT TOOL PAGE STYLES (tool.html)
+   ============================================ */
+
+/* Sidebar Toggle Button */
+#toggleBtn{
+  position:fixed;
+  top:10px;
+  left:10px;
+  z-index:10;
+  width:50px;
+  height:50px;
+  background:#222;
+  color:white;
+  border:none;
+  cursor:pointer;
+  border-radius:4px;
+  font-size:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+#toggleBtn:hover{
+  background:#333;
+}
+
+/* Sidebar Container */
+#sidebar{
+  position:fixed;
+  top:0;
+  left:0;
+  width:240px;
+  height:100%;
+  background:var(--sidebar-bg);
+  color:white;
+  padding:15px;
+  z-index:9;
+  transition:transform 0.3s ease;
+  overflow-y:auto;
+  box-sizing:border-box;
+}
+
+#sidebar.hidden{
+  transform:translateX(-100%);
+}
+
+#sidebar h3{
+  margin-top:0;
+  color:white;
+  font-size:1.2rem;
+}
+
+#sidebar hr{
+  border:none;
+  border-top:1px solid #444;
+  margin:12px 0;
+}
+
+/* Sidebar Input Fields */
+#sidebar input[type="number"],
+#sidebar input[type="file"]{
+  width:100%;
+  padding:8px;
+  margin:4px 0;
+  border:1px solid #444;
+  background:#2a2a2a;
+  color:white;
+  box-sizing:border-box;
+  border-radius:4px;
+}
+
+#sidebar input::placeholder{
+  color:#999;
+}
+
+/* Sidebar Labels */
+#sidebar label{
+  display:block;
+  margin-top:8px;
+  font-size:0.9rem;
+  color:#ccc;
+}
+
+/* Sidebar Buttons */
+#sidebar button{
+  width:100%;
+  padding:8px;
+  margin:4px 0;
+  background:#3b82f6;
+  color:white;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:0.9rem;
+}
+
+#sidebar button:hover{
+  background:#2563eb;
+}
+
+/* Scale Box */
+#scaleBox{
+  margin-bottom:12px;
+}
+
+#scaleInfo{
+  color:#90ee90;
+  font-size:0.85rem;
+}
+
+/* Map Edit Controls (inline buttons) */
+#mapEditControls button{
+  width:48%;
+  display:inline-block;
+  padding:6px 4px;
+}
+
+#mapEditControls button:nth-child(4n+2){
+  margin-left:2%;
+}
+
+/* Canvas */
+canvas{
+  position:absolute;
+  top:0;
+  left:0;
+  display:block;
+}
+
+/* Rulers Container */
+.rulers-container{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+
+#canvas.main-canvas{
+  pointer-events:auto;
+}
+
+/* Top Ruler (Horizontal - Colunas) */
+#topRuler.ruler-top{
+  position:fixed;
+  top:0;
+  left:50px;
+  right:0;
+  height:30px;
+  border-bottom:2px solid #3b82f6;
+  background:linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 100%);
+  pointer-events:none;
+  z-index:8;
+}
+
+/* Left Ruler (Vertical - Linhas) */
+#leftRuler.ruler-left{
+  position:fixed;
+  top:30px;
+  left:0;
+  width:50px;
+  bottom:0;
+  border-right:2px solid #3b82f6;
+  background:linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 100%);
+  pointer-events:none;
+  z-index:8;
+}
+
+/* Main Canvas - Offset pelo tamanho das réguas */
+canvas#canvas{
+  position:absolute;
+  top:30px !important;
+  left:50px !important;
+}
+
+/* Grid Scale Control (Zoom buttons) */
+#gridScaleControl{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  z-index:999;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+#gridScaleControl button{
+  width:50px;
+  height:50px;
+  background:#222;
+  color:white;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+#gridScaleControl button:hover{
+  background:#333;
+}
+
+/* Legacy Editor (VTT stub for campaigns) */
+#editor{
+  background:var(--panel);
+  border-radius:6px;
+  color:#111;
+  padding:10px;
+  border:1px solid #ccc;
+  min-height:200px;
+  white-space:pre-wrap;
+  font-family:monospace;
+}
+
+/* ============================================
+   INDEX PAGE STYLES (index.html, etc)
+   ============================================ */
+
+.campaign-item{
+  padding:8px 10px;
+  border:1px solid #e6e9ef;
+  border-radius:6px;
+  background:#fff;
+  margin:6px 0;
+}
+
+.muted{
+  color:var(--muted);
+  font-size:0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width:768px) {
+  .game-master-card{
+    padding:40px;
+    max-width:90vw;
+    gap:30px;
+  }
+
+  .game-master-title{
+    font-size:2rem;
+  }
+
+  .btn{
+    padding:14px 24px;
+    font-size:1rem;
+  }
+
+  .button-group{
+    gap:15px;
+  }
+}
+
+@media (max-width:480px) {
+  .game-master-card{
+    padding:30px;
+    max-width:95vw;
+    gap:20px;
+  }
+
+  .game-master-title{
+    font-size:1.5rem;
+  }
+
+  .btn{
+    padding:12px 20px;
+    font-size:0.9rem;
+  }
+
+  .button-group{
+    gap:12px;
+  }
+}

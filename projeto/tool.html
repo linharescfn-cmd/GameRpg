@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GameRpg — VTT / Editor</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Toggle Button para Sidebar -->
+  <button id="toggleBtn">☰</button>
+
+  <!-- Sidebar com Ferramentas -->
+  <div id="sidebar">
+    <h3>Ferramentas</h3>
+
+    <!-- Controles de Escala -->
+    <div id="scaleBox">
+      <input type="number" id="cellMeters" placeholder="metros por célula">
+      <button id="applyScale">Aplicar escala</button>
+      <div id="scaleInfo" style="margin-top:8px;"></div>
+    </div>
+
+    <hr>
+
+    <!-- Setup de Mapa -->
+    <div id="mapSetup">
+      <input type="file" id="imgUpload">
+      <label>Largura (células)</label>
+      <input type="number" id="imgW" value="10">
+      <label>Altura (células)</label>
+      <input type="number" id="imgH" value="10">
+      <button id="applyMap">Aplicar mapa</button>
+    </div>
+
+    <!-- Controles de Edição de Mapa -->
+    <div id="mapEditControls" style="display:none;margin-top:10px;">
+      <div><b id="mapNameLabel"></b></div>
+      <div style="margin-top:8px;">
+        <span>Largura:</span><br>
+        <button id="mapWMinus">-</button>
+        <button id="mapWPlus">+</button>
+        <span id="mapWValue"></span>
+      </div>
+      <div style="margin-top:8px;">
+        <span>Altura:</span><br>
+        <button id="mapHMinus">-</button>
+        <button id="mapHPlus">+</button>
+        <span id="mapHValue"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid Scale Control (Zoom) -->
+  <div id="gridScaleControl">
+    <button id="gridZoomIn">➕</button>
+    <button id="gridZoomOut">➖</button>
+  </div>
+
+  <!-- Rulers Container -->
+  <div class="rulers-container">
+    <!-- Top Ruler (Colunas A, B, C, etc) -->
+    <canvas id="topRuler" class="ruler ruler-top"></canvas>
+    
+    <!-- Left Ruler (Linhas 1, 2, 3, etc) -->
+    <canvas id="leftRuler" class="ruler ruler-left"></canvas>
+    
+    <!-- Canvas VTT (Principal) -->
+    <canvas id="canvas" class="main-canvas"></canvas>
+  </div>
+
+  <!-- Legacy Editor (oculto) -->
+  <div id="editor" style="display:none; white-space:pre-wrap; border:1px solid #ccc; padding:10px; min-height:200px">Carregando...</div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/vtt.js"></script>
+  <script>
+    (async function(){
+      const params = new URLSearchParams(location.search);
+      const filename = params.get('campaign');
+      const campaign = filename ? await window.Storage.loadCampaign(filename) : null;
+      window.VTT.init(campaign);
+    })();
+  </script>
+</body>
+</html>

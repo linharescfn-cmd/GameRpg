@@ -1,0 +1,42 @@
+{
+  "state": {
+    "ui": {
+      "sidebarOpen": true
+    },
+    "grid": {
+      "cellMultiplier": 1.2,
+      "metersPerCell": 5
+    },
+    "image": {
+      "widthCells": 12,
+      "heightCells": 12,
+      "anchor": {
+        "col": 3,
+        "row": 3
+      },
+      "name": "Floresta Encantada",
+      "active": true
+    }
+  },
+  "camera": {
+    "x": 100,
+    "y": 50
+  },
+  "image": {
+    "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+    "widthCells": 12,
+    "heightCells": 12,
+    "anchor": {
+      "col": 3,
+      "row": 3
+    },
+    "name": "Floresta Encantada",
+    "active": true
+  },
+  "metadata": {
+    "campaignName": "Aventura na Floresta",
+    "lastModified": "2026-05-07T10:30:00Z",
+    "masterId": "mestre-001",
+    "version": "1.0"
+  }
+}

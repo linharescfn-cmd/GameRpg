@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GameRpg — Mestre do Game</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="dark-theme">
+  <!-- Container Principal -->
+  <div class="game-master-container">
+    <!-- Card do Mestre -->
+    <div class="game-master-card">
+      <h1 class="game-master-title">Mestre do Game</h1>
+      
+      <!-- Botões de Ação -->
+      <div class="button-group">
+        <button id="loadNewGameBtn" class="btn btn-primary">Carregar Novo Jogo</button>
+        <button id="searchSavedGameBtn" class="btn btn-secondary">Buscar Jogo Salvo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input Hidden para Upload de JSON -->
+  <input type="file" id="jsonFileInput" accept=".json" style="display:none;">
+
+  <script src="js/storage.js"></script>
+  <script>
+    (async function(){
+      // =====================
+      // DOM References
+      // =====================
+      const loadNewGameBtn = document.getElementById('loadNewGameBtn');
+      const searchSavedGameBtn = document.getElementById('searchSavedGameBtn');
+      const jsonFileInput = document.getElementById('jsonFileInput');
+
+      // =====================
+      // Load New Game
+      // =====================
+      loadNewGameBtn.onclick = () => {
+        window.location.href = 'tool.html';
+      };
+
+      // =====================
+      // Search Saved Game
+      // =====================
+      searchSavedGameBtn.onclick = () => {
+        jsonFileInput.click();
+      };
+
+      // =====================
+      // File Upload Handler
+      // =====================
+      jsonFileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+          const fileContent = await file.text();
+          const gameData = JSON.parse(fileContent);
+          
+          // Salvar dados no sessionStorage para uso na página tool
+          sessionStorage.setItem('loadedGameData', JSON.stringify(gameData));
+          
+          // Redirecionar para tool.html
+          window.location.href = 'tool.html?source=loaded';
+        } catch (err) {
+          console.error('Erro ao carregar arquivo JSON:', err);
+          alert('Erro ao processar arquivo. Verifique se é um JSON válido.');
+        }
+      };
+    })();
+  </script>
+</body>
+</html>
