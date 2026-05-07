@@ -158,7 +158,7 @@ a:hover{
 #toggleBtn{
   position:fixed;
   top:10px;
-  left:10px;
+  left:calc((240px - 50px) / 2 + 10px);
   z-index:10;
   width:50px;
   height:50px;
@@ -180,10 +180,10 @@ a:hover{
 /* Sidebar Container */
 #sidebar{
   position:fixed;
-  top:0;
+  top:70px;
   left:0;
   width:240px;
-  height:100%;
+  height:calc(100% - 80px);
   background:var(--sidebar-bg);
   color:white;
   padding:15px;
@@ -270,6 +270,87 @@ a:hover{
 
 #mapEditControls button:nth-child(4n+2){
   margin-left:2%;
+}
+
+/* Token Controls Section */
+#tokenControls h4{
+  margin:8px 0 12px;
+  color:var(--accent);
+  font-size:1rem;
+}
+
+#addTokenBtn{
+  width:100%;
+  padding:8px;
+  background:var(--accent);
+  color:white;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:0.9rem;
+  margin-bottom:12px;
+}
+
+#addTokenBtn:hover{
+  background:#2563eb;
+}
+
+#tokenList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.token-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:#2a2a2a;
+  padding:8px;
+  border-radius:4px;
+  border:1px solid #3b82f6;
+}
+
+.token-item .token-icon{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  object-fit:cover;
+  margin-right:8px;
+  border:2px solid var(--accent);
+}
+
+.token-item .token-actions{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+
+.token-item button{
+  width:28px;
+  height:28px;
+  padding:0;
+  background:#3b82f6;
+  color:white;
+  border:none;
+  border-radius:3px;
+  cursor:pointer;
+  font-size:0.8rem;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.token-item button:hover{
+  background:#2563eb;
+}
+
+.token-item .btn-delete{
+  background:#ef4444;
+}
+
+.token-item .btn-delete:hover{
+  background:#dc2626;
 }
 
 /* Canvas */

@@ -21,6 +21,9 @@
   const mapHMinus = document.getElementById("mapHMinus");
   const gridZoomIn = document.getElementById("gridZoomIn");
   const gridZoomOut = document.getElementById("gridZoomOut");
+  const addTokenBtn = document.getElementById("addTokenBtn");
+  const tokenImageUpload = document.getElementById("tokenImageUpload");
+  const tokenList = document.getElementById("tokenList");
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
   const editorEl = document.getElementById("editor");
@@ -47,7 +50,8 @@
       anchor: { col: 3, row: 3 },
       name: null,
       active: false
-    }
+    },
+    tokens: []
   };
 
   // =====================
@@ -64,6 +68,15 @@
   let imgObj = null;
   let pendingImg = null;
   let pendingName = null;
+  let pendingTokenImg = null;
+  let pendingTokenName = null;
+  let draggingToken = null;
+  let draggingTokenPointerId = null;
+  let draggingTokenStart = null;
+  const TOKEN_DEFAULT_SIZE = 50;
+  let tokenCreationCount = 0;
+  const TOKEN_PRIMARY_COLORS = ["#ef4444", "#3b82f6", "#fbbf24"];
+  const TOKEN_SECONDARY_TERTIARY_COLORS = ["#10b981", "#f97316", "#a855f7", "#ec4899", "#06b6d4", "#84cc16"];
 
   // =====================
   // LOAD SAVED GAME DATA
@@ -216,6 +229,114 @@
   }
 
   // =====================
+  // TOKEN CONTROLS
+  // =====================
+  function generateTokenId() {
+    return "token_" + Date.now() + "_" + Math.random().toString(36).slice(2, 9);
+  }
+
+  function getNextTokenBorderColor() {
+    const usePrimary = tokenCreationCount < 3;
+    const pool = usePrimary ? TOKEN_PRIMARY_COLORS : TOKEN_SECONDARY_TERTIARY_COLORS;
+    const color = pool[Math.floor(Math.random() * pool.length)];
+    tokenCreationCount++;
+    return color;
+  }
+
+  function getTokenAtPoint(screenPoint) {
+    for (let i = state.tokens.length - 1; i >= 0; i--) {
+      const token = state.tokens[i];
+      const center = worldToScreen({ x: token.x, y: token.y });
+      const radius = (token.size * zoom) / 2;
+      const d = Math.hypot(screenPoint.x - center.x, screenPoint.y - center.y);
+      if (d <= radius) return token;
+    }
+    return null;
+  }
+
+  function updateTokenList() {
+    if (!tokenList) return;
+    tokenList.innerHTML = "";
+    state.tokens.forEach((token) => {
+      const tokenItem = document.createElement("div");
+      tokenItem.className = "token-item";
+
+      const iconImg = document.createElement("img");
+      iconImg.className = "token-icon";
+      iconImg.src = token.src;
+      iconImg.style.borderColor = token.borderColor || "#3b82f6";
+
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "token-actions";
+
+      const minusBtn = document.createElement("button");
+      minusBtn.textContent = "-";
+      minusBtn.onclick = () => {
+        token.size = Math.max(10, token.size - 10);
+        draw();
+      };
+
+      const plusBtn = document.createElement("button");
+      plusBtn.textContent = "+";
+      plusBtn.onclick = () => {
+        token.size = Math.min(200, token.size + 10);
+        draw();
+      };
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "btn-delete";
+      deleteBtn.textContent = "x";
+      deleteBtn.onclick = () => {
+        state.tokens = state.tokens.filter((t) => t.id !== token.id);
+        updateTokenList();
+        draw();
+      };
+
+      actionsDiv.appendChild(minusBtn);
+      actionsDiv.appendChild(plusBtn);
+      actionsDiv.appendChild(deleteBtn);
+      tokenItem.appendChild(iconImg);
+      tokenItem.appendChild(actionsDiv);
+      tokenList.appendChild(tokenItem);
+    });
+  }
+
+  if (addTokenBtn && tokenImageUpload) {
+    addTokenBtn.onclick = () => {
+      tokenImageUpload.click();
+    };
+
+    tokenImageUpload.onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      pendingTokenName = file.name.replace(/\.[^\/\.]+$/, "");
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        pendingTokenImg = new Image();
+        pendingTokenImg.src = ev.target.result;
+        pendingTokenImg.onload = () => {
+          const centerScreen = { x: width / 2, y: height / 2 };
+          const centerWorld = screenToWorld(centerScreen);
+          state.tokens.push({
+            id: generateTokenId(),
+            src: ev.target.result,
+            x: centerWorld.x,
+            y: centerWorld.y,
+            size: TOKEN_DEFAULT_SIZE,
+            name: pendingTokenName,
+            imageObj: pendingTokenImg,
+            borderColor: getNextTokenBorderColor()
+          });
+          tokenImageUpload.value = "";
+          updateTokenList();
+          draw();
+        };
+      };
+      reader.readAsDataURL(file);
+    };
+  }
+
+  // =====================
   // CAMERA DRAG / PINCH / WHEEL ZOOM
   // =====================
   const pointers = new Map();
@@ -271,6 +392,16 @@
     pointers.set(e.pointerId, pt);
     canvas.setPointerCapture(e.pointerId);
 
+    const hitToken = getTokenAtPoint(pt);
+    if (hitToken) {
+      draggingToken = hitToken;
+      draggingTokenPointerId = e.pointerId;
+      draggingTokenStart = { x: hitToken.x, y: hitToken.y };
+      lastMouse = pt;
+      e.preventDefault();
+      return;
+    }
+
     if (pointers.size === 1) {
       isDragging = true;
       activePointerId = e.pointerId;
@@ -304,6 +435,17 @@
       return;
     }
 
+    if (draggingToken && e.pointerId === draggingTokenPointerId) {
+      const current = getCanvasPoint(e);
+      const scale = getCellSize();
+      draggingToken.x += (current.x - lastMouse.x) / scale;
+      draggingToken.y += (current.y - lastMouse.y) / scale;
+      lastMouse = current;
+      draw();
+      e.preventDefault();
+      return;
+    }
+
     if (isDragging && e.pointerId === activePointerId) {
       const dx = pt.x - lastMouse.x;
       const dy = pt.y - lastMouse.y;
@@ -318,6 +460,14 @@
   function onPointerUp(e) {
     pointers.delete(e.pointerId);
     try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+
+    if (draggingToken && e.pointerId === draggingTokenPointerId) {
+      draggingToken = null;
+      draggingTokenPointerId = null;
+      draggingTokenStart = null;
+      draw();
+    }
+
     if (e.pointerId === activePointerId) {
       isDragging = false;
       activePointerId = null;
@@ -377,6 +527,37 @@
   }
 
   // =====================
+  // DRAW TOKENS
+  // =====================
+  function drawTokens() {
+    state.tokens.forEach((token) => {
+      const center = worldToScreen({ x: token.x, y: token.y });
+      const size = token.size * zoom;
+      const rx = size / 2;
+      const ry = size / 2;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(center.x, center.y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      if (token.imageObj && token.imageObj.complete) {
+        ctx.drawImage(token.imageObj, center.x - rx, center.y - ry, size, size);
+      } else {
+        ctx.fillStyle = "#555";
+        ctx.fillRect(center.x - rx, center.y - ry, size, size);
+      }
+      ctx.restore();
+
+      ctx.strokeStyle = token.borderColor || "#3b82f6";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(center.x, center.y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+  }
+
+  // =====================
   // DRAW RENDER LOOP
   // =====================
   function draw() {
@@ -384,6 +565,7 @@
     ctx.fillRect(0, 0, width, height);
     drawGrid();
     drawImage();
+    drawTokens();
     
     // Atualizar réguas
     drawTopRuler();
@@ -508,6 +690,11 @@
 
   window.addEventListener("resize", resize);
   resize();
+
+  // =====================
+  // INITIALIZATION
+  // =====================
+  updateTokenList();
 
   // =====================
   // VTT PUBLIC API
