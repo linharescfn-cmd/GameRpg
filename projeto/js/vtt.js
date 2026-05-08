@@ -16,10 +16,15 @@
   const gridZoomIn = document.getElementById("gridZoomIn");
   const gridZoomOut = document.getElementById("gridZoomOut");
   const addTokenBtn = document.getElementById("addTokenBtn");
+  const addEnemyTokenBtn = document.getElementById("addEnemyTokenBtn");
   const tokenDrawerBtn = document.getElementById("tokenDrawerBtn");
   const tokenDrawerContent = document.getElementById("tokenDrawerContent");
+  const enemyTokenDrawerBtn = document.getElementById("enemyTokenDrawerBtn");
+  const enemyTokenDrawerContent = document.getElementById("enemyTokenDrawerContent");
   const tokenImageUpload = document.getElementById("tokenImageUpload");
+  const enemyTokenImageUpload = document.getElementById("enemyTokenImageUpload");
   const tokenList = document.getElementById("tokenList");
+  const enemyTokenList = document.getElementById("enemyTokenList");
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
   const editorEl = document.getElementById("editor");
@@ -40,7 +45,8 @@
       metersPerCell: null
     },
     maps: [],
-    tokens: []
+    tokens: [],
+    enemyTokens: []
   };
 
   // =====================
@@ -61,6 +67,7 @@
   let draggingToken = null;
   let draggingTokenPointerId = null;
   let draggingTokenStart = null;
+  let draggingTokenGroup = "tokens";
   const TOKEN_DEFAULT_SIZE = 50;
   const TOKEN_COLORS = [
     "#ef4444", "#3b82f6", "#fbbf24", "#10b981", "#f97316",
@@ -70,6 +77,7 @@
   let lastTokenColor = null;
   const openMapIds = new Set();
   let tokenDrawerOpen = false;
+  let enemyTokenDrawerOpen = false;
 
   // =====================
   // LOAD SAVED GAME DATA
@@ -86,6 +94,9 @@
         }
 
         setTokenDrawerOpen(Array.isArray(state.tokens) && state.tokens.length > 0);
+        setEnemyTokenDrawerOpen(Array.isArray(state.enemyTokens) && state.enemyTokens.length > 0);
+        updateTokenList();
+        updateEnemyTokenList();
 
         // Aplicar camera salva
         if (gameData.camera) {
@@ -373,12 +384,19 @@
   }
 
   function getTokenAtPoint(screenPoint) {
-    for (let i = state.tokens.length - 1; i >= 0; i--) {
-      const token = state.tokens[i];
-      const center = worldToScreen({ x: token.x, y: token.y });
-      const radius = (token.size * zoom) / 2;
-      const d = Math.hypot(screenPoint.x - center.x, screenPoint.y - center.y);
-      if (d <= radius) return token;
+    const groups = [
+      { name: "enemyTokens", tokens: state.enemyTokens },
+      { name: "tokens", tokens: state.tokens }
+    ];
+
+    for (const group of groups) {
+      for (let i = group.tokens.length - 1; i >= 0; i--) {
+        const token = group.tokens[i];
+        const center = worldToScreen({ x: token.x, y: token.y });
+        const radius = (token.size * zoom) / 2;
+        const d = Math.hypot(screenPoint.x - center.x, screenPoint.y - center.y);
+        if (d <= radius) return { token, group: group.name };
+      }
     }
     return null;
   }
@@ -430,6 +448,54 @@
     });
   }
 
+  function updateEnemyTokenList() {
+    if (!enemyTokenList) return;
+    enemyTokenList.innerHTML = "";
+    state.enemyTokens.forEach((token) => {
+      const tokenItem = document.createElement("div");
+      tokenItem.className = "token-item";
+
+      const iconImg = document.createElement("img");
+      iconImg.className = "token-icon";
+      iconImg.src = token.src;
+      iconImg.style.borderColor = "#ef4444";
+      iconImg.style.borderWidth = "4px";
+
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "token-actions";
+
+      const minusBtn = document.createElement("button");
+      minusBtn.textContent = "-";
+      minusBtn.onclick = () => {
+        token.size = Math.max(10, token.size - 10);
+        draw();
+      };
+
+      const plusBtn = document.createElement("button");
+      plusBtn.textContent = "+";
+      plusBtn.onclick = () => {
+        token.size = Math.min(200, token.size + 10);
+        draw();
+      };
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "btn-delete";
+      deleteBtn.textContent = "x";
+      deleteBtn.onclick = () => {
+        state.enemyTokens = state.enemyTokens.filter((t) => t.id !== token.id);
+        updateEnemyTokenList();
+        draw();
+      };
+
+      actionsDiv.appendChild(minusBtn);
+      actionsDiv.appendChild(plusBtn);
+      actionsDiv.appendChild(deleteBtn);
+      tokenItem.appendChild(iconImg);
+      tokenItem.appendChild(actionsDiv);
+      enemyTokenList.appendChild(tokenItem);
+    });
+  }
+
   function setTokenDrawerOpen(open) {
     tokenDrawerOpen = open;
     if (tokenDrawerBtn) {
@@ -440,10 +506,56 @@
     }
   }
 
+  function setEnemyTokenDrawerOpen(open) {
+    enemyTokenDrawerOpen = open;
+    if (enemyTokenDrawerBtn) {
+      enemyTokenDrawerBtn.setAttribute("aria-expanded", String(open));
+    }
+    if (enemyTokenDrawerContent) {
+      enemyTokenDrawerContent.style.display = open ? "block" : "none";
+    }
+  }
+
   if (tokenDrawerBtn) {
     tokenDrawerBtn.onclick = () => {
       setTokenDrawerOpen(!tokenDrawerOpen);
     };
+  }
+
+  if (enemyTokenDrawerBtn) {
+    enemyTokenDrawerBtn.onclick = () => {
+      setEnemyTokenDrawerOpen(!enemyTokenDrawerOpen);
+    };
+  }
+
+  function createTokenFromUpload(file, targetGroup) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.src = ev.target.result;
+      img.onload = () => {
+        const centerScreen = { x: width / 2, y: height / 2 };
+        const centerWorld = screenToWorld(centerScreen);
+        const token = {
+          id: generateTokenId(),
+          src: ev.target.result,
+          x: centerWorld.x,
+          y: centerWorld.y,
+          size: TOKEN_DEFAULT_SIZE,
+          name: file.name.replace(/\.[^\/\.]+$/, ""),
+          imageObj: img,
+          borderColor: targetGroup === "enemyTokens" ? "#ef4444" : getNextTokenBorderColor(),
+          borderWidth: targetGroup === "enemyTokens" ? 4 : 2
+        };
+        state[targetGroup].push(token);
+        setTokenDrawerOpen(state.tokens.length > 0 || tokenDrawerOpen);
+        setEnemyTokenDrawerOpen(state.enemyTokens.length > 0 || enemyTokenDrawerOpen);
+        if (targetGroup === "tokens") updateTokenList();
+        if (targetGroup === "enemyTokens") updateEnemyTokenList();
+        draw();
+      };
+    };
+    reader.readAsDataURL(file);
   }
 
   if (addTokenBtn && tokenImageUpload) {
@@ -454,31 +566,21 @@
     tokenImageUpload.onchange = (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
-      pendingTokenName = file.name.replace(/\.[^\/\.]+$/, "");
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        pendingTokenImg = new Image();
-        pendingTokenImg.src = ev.target.result;
-        pendingTokenImg.onload = () => {
-          const centerScreen = { x: width / 2, y: height / 2 };
-          const centerWorld = screenToWorld(centerScreen);
-          state.tokens.push({
-            id: generateTokenId(),
-            src: ev.target.result,
-            x: centerWorld.x,
-            y: centerWorld.y,
-            size: TOKEN_DEFAULT_SIZE,
-            name: pendingTokenName,
-            imageObj: pendingTokenImg,
-            borderColor: getNextTokenBorderColor()
-          });
-          tokenImageUpload.value = "";
-          setTokenDrawerOpen(true);
-          updateTokenList();
-          draw();
-        };
-      };
-      reader.readAsDataURL(file);
+      createTokenFromUpload(file, "tokens");
+      tokenImageUpload.value = "";
+    };
+  }
+
+  if (addEnemyTokenBtn && enemyTokenImageUpload) {
+    addEnemyTokenBtn.onclick = () => {
+      enemyTokenImageUpload.click();
+    };
+
+    enemyTokenImageUpload.onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      createTokenFromUpload(file, "enemyTokens");
+      enemyTokenImageUpload.value = "";
     };
   }
 
@@ -540,9 +642,10 @@
 
     const hitToken = getTokenAtPoint(pt);
     if (hitToken) {
-      draggingToken = hitToken;
+      draggingToken = hitToken.token;
+      draggingTokenGroup = hitToken.group;
       draggingTokenPointerId = e.pointerId;
-      draggingTokenStart = { x: hitToken.x, y: hitToken.y };
+      draggingTokenStart = { x: hitToken.token.x, y: hitToken.token.y };
       lastMouse = pt;
       e.preventDefault();
       return;
@@ -678,7 +781,12 @@
   // DRAW TOKENS
   // =====================
   function drawTokens() {
-    state.tokens.forEach((token) => {
+    const allTokens = [
+      ...state.tokens.map((token) => ({ token, group: "tokens" })),
+      ...state.enemyTokens.map((token) => ({ token, group: "enemyTokens" }))
+    ];
+
+    allTokens.forEach(({ token }) => {
       const center = worldToScreen({ x: token.x, y: token.y });
       const size = token.size * zoom;
       const rx = size / 2;
@@ -698,7 +806,7 @@
       ctx.restore();
 
       ctx.strokeStyle = token.borderColor || "#3b82f6";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = token.borderWidth || 2;
       ctx.beginPath();
       ctx.ellipse(center.x, center.y, rx, ry, 0, 0, Math.PI * 2);
       ctx.stroke();
@@ -906,6 +1014,7 @@
   // INITIALIZATION
   // =====================
   updateTokenList();
+  updateEnemyTokenList();
 
   // =====================
   // VTT PUBLIC API
