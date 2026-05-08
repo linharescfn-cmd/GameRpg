@@ -40,10 +40,12 @@
 
     <!-- Controles de Tokens -->
     <div id="tokenControls">
-      <h4>Tokens</h4>
       <input type="file" id="tokenImageUpload" accept="image/*" style="display:none;">
       <button id="addTokenBtn">+ Adicionar Token</button>
-      <div id="tokenList" style="margin-top:12px;"></div>
+      <button id="tokenDrawerBtn" class="drawer-toggle" type="button" aria-expanded="false">Tokens adicionados</button>
+      <div id="tokenDrawerContent" class="drawer-content" style="display:none;">
+        <div id="tokenList" style="margin-top:12px;"></div>
+      </div>
     </div>
   </div>
 

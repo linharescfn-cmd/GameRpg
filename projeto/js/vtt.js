@@ -16,6 +16,8 @@
   const gridZoomIn = document.getElementById("gridZoomIn");
   const gridZoomOut = document.getElementById("gridZoomOut");
   const addTokenBtn = document.getElementById("addTokenBtn");
+  const tokenDrawerBtn = document.getElementById("tokenDrawerBtn");
+  const tokenDrawerContent = document.getElementById("tokenDrawerContent");
   const tokenImageUpload = document.getElementById("tokenImageUpload");
   const tokenList = document.getElementById("tokenList");
   const canvas = document.getElementById("canvas");
@@ -66,6 +68,8 @@
     "#8b5cf6", "#14b8a6", "#f43f5e", "#7c3aed", "#06b6d4"
   ];
   let lastTokenColor = null;
+  const openMapIds = new Set();
+  let tokenDrawerOpen = false;
 
   // =====================
   // LOAD SAVED GAME DATA
@@ -81,6 +85,8 @@
           Object.assign(state, gameData.state);
         }
 
+        setTokenDrawerOpen(Array.isArray(state.tokens) && state.tokens.length > 0);
+
         // Aplicar camera salva
         if (gameData.camera) {
           camera.x = gameData.camera.x || 0;
@@ -91,6 +97,7 @@
         if (gameData.state && gameData.state.maps && gameData.state.maps.length > 0) {
           let loadedMaps = 0;
           gameData.state.maps.forEach((map) => {
+            openMapIds.add(map.id);
             const img = new Image();
             img.src = map.src;
             img.onload = () => {
@@ -159,6 +166,7 @@
     };
     
     state.maps.push(newMap);
+    openMapIds.add(mapId);
     imgUpload.value = "";
     updateMapList();
     draw();
@@ -169,26 +177,36 @@
   // =====================
   function updateMapList() {
     mapEditList.innerHTML = "";
-    
-    state.maps.forEach((map, index) => {
+
+    state.maps.forEach((map) => {
       const mapContainer = document.createElement("div");
-      mapContainer.className = "map-item";
-      mapContainer.style.marginTop = "10px";
-      mapContainer.style.paddingBottom = "12px";
-      mapContainer.style.borderBottom = "1px solid #444";
-      
-      // Título do mapa
-      const mapTitle = document.createElement("div");
-      mapTitle.style.marginBottom = "8px";
-      mapTitle.innerHTML = `<b>Mapa ${map.number}</b>`;
-      mapContainer.appendChild(mapTitle);
-      
-      // Controles de Largura
+      mapContainer.className = "map-drawer";
+
+      const mapTitleButton = document.createElement("button");
+      mapTitleButton.type = "button";
+      mapTitleButton.className = "map-drawer-toggle";
+      mapTitleButton.textContent = `Mapa ${map.number}`;
+      mapTitleButton.setAttribute("aria-expanded", String(openMapIds.has(map.id)));
+
+      const mapContent = document.createElement("div");
+      mapContent.className = "map-drawer-content";
+      mapContent.style.display = openMapIds.has(map.id) ? "block" : "none";
+
+      mapTitleButton.onclick = () => {
+        const shouldOpen = !openMapIds.has(map.id);
+        if (shouldOpen) {
+          openMapIds.add(map.id);
+        } else {
+          openMapIds.delete(map.id);
+        }
+        mapContent.style.display = shouldOpen ? "block" : "none";
+        mapTitleButton.setAttribute("aria-expanded", String(shouldOpen));
+      };
+
       const widthDiv = document.createElement("div");
-      widthDiv.style.marginBottom = "8px";
-      widthDiv.innerHTML = `
-        <span style="font-size: 0.9rem; color: #ccc;">Largura:</span><br>
-      `;
+      widthDiv.className = "map-grid-row";
+      widthDiv.innerHTML = `<span style="font-size:0.9rem;color:#ccc;">Largura:</span><br>`;
+
       const wMinusBtn = document.createElement("button");
       wMinusBtn.textContent = "-";
       wMinusBtn.style.width = "48%";
@@ -200,7 +218,7 @@
           draw();
         }
       };
-      
+
       const wPlusBtn = document.createElement("button");
       wPlusBtn.textContent = "+";
       wPlusBtn.style.width = "48%";
@@ -211,22 +229,19 @@
         updateMapList();
         draw();
       };
-      
+
       const wValueSpan = document.createElement("span");
       wValueSpan.textContent = map.widthCells;
       wValueSpan.style.marginLeft = "8px";
-      
+
       widthDiv.appendChild(wMinusBtn);
       widthDiv.appendChild(wPlusBtn);
       widthDiv.appendChild(wValueSpan);
-      mapContainer.appendChild(widthDiv);
-      
-      // Controles de Altura
+
       const heightDiv = document.createElement("div");
-      heightDiv.style.marginBottom = "8px";
-      heightDiv.innerHTML = `
-        <span style="font-size: 0.9rem; color: #ccc;">Altura:</span><br>
-      `;
+      heightDiv.className = "map-grid-row";
+      heightDiv.innerHTML = `<span style="font-size:0.9rem;color:#ccc;">Altura:</span><br>`;
+
       const hMinusBtn = document.createElement("button");
       hMinusBtn.textContent = "-";
       hMinusBtn.style.width = "48%";
@@ -238,7 +253,7 @@
           draw();
         }
       };
-      
+
       const hPlusBtn = document.createElement("button");
       hPlusBtn.textContent = "+";
       hPlusBtn.style.width = "48%";
@@ -249,73 +264,62 @@
         updateMapList();
         draw();
       };
-      
+
       const hValueSpan = document.createElement("span");
       hValueSpan.textContent = map.heightCells;
       hValueSpan.style.marginLeft = "8px";
-      
+
       heightDiv.appendChild(hMinusBtn);
       heightDiv.appendChild(hPlusBtn);
       heightDiv.appendChild(hValueSpan);
-      mapContainer.appendChild(heightDiv);
-      
-      // Controles de Posição
+
       const posDiv = document.createElement("div");
+      posDiv.className = "map-position-row";
       posDiv.style.marginTop = "8px";
-      posDiv.innerHTML = `
-        <span style="font-size: 0.9rem; color: #ccc;">Posição:</span><br>
-      `;
-      
+      posDiv.innerHTML = `<span style="font-size:0.9rem;color:#ccc;">Posição:</span><br>`;
+
       const upBtn = document.createElement("button");
       upBtn.textContent = "⬆ Cima";
       upBtn.style.width = "100%";
-      upBtn.style.padding = "6px";
-      upBtn.style.marginTop = "4px";
-      upBtn.style.background = "#10b981";
       upBtn.onclick = () => {
         map.anchor.row = Math.max(-100, map.anchor.row - 1);
         draw();
       };
-      
+
       const downBtn = document.createElement("button");
       downBtn.textContent = "⬇ Baixo";
       downBtn.style.width = "100%";
-      downBtn.style.padding = "6px";
-      downBtn.style.marginTop = "4px";
-      downBtn.style.background = "#10b981";
       downBtn.onclick = () => {
         map.anchor.row = Math.min(100, map.anchor.row + 1);
         draw();
       };
-      
+
       const leftBtn = document.createElement("button");
       leftBtn.textContent = "⬅ Esquerda";
       leftBtn.style.width = "100%";
-      leftBtn.style.padding = "6px";
-      leftBtn.style.marginTop = "4px";
-      leftBtn.style.background = "#10b981";
       leftBtn.onclick = () => {
         map.anchor.col = Math.max(-100, map.anchor.col - 1);
         draw();
       };
-      
+
       const rightBtn = document.createElement("button");
       rightBtn.textContent = "➡ Direita";
       rightBtn.style.width = "100%";
-      rightBtn.style.padding = "6px";
-      rightBtn.style.marginTop = "4px";
-      rightBtn.style.background = "#10b981";
       rightBtn.onclick = () => {
         map.anchor.col = Math.min(100, map.anchor.col + 1);
         draw();
       };
-      
+
       posDiv.appendChild(upBtn);
       posDiv.appendChild(downBtn);
       posDiv.appendChild(leftBtn);
       posDiv.appendChild(rightBtn);
-      mapContainer.appendChild(posDiv);
-      
+
+      mapContent.appendChild(widthDiv);
+      mapContent.appendChild(heightDiv);
+      mapContent.appendChild(posDiv);
+      mapContainer.appendChild(mapTitleButton);
+      mapContainer.appendChild(mapContent);
       mapEditList.appendChild(mapContainer);
     });
   }
@@ -426,6 +430,22 @@
     });
   }
 
+  function setTokenDrawerOpen(open) {
+    tokenDrawerOpen = open;
+    if (tokenDrawerBtn) {
+      tokenDrawerBtn.setAttribute("aria-expanded", String(open));
+    }
+    if (tokenDrawerContent) {
+      tokenDrawerContent.style.display = open ? "block" : "none";
+    }
+  }
+
+  if (tokenDrawerBtn) {
+    tokenDrawerBtn.onclick = () => {
+      setTokenDrawerOpen(!tokenDrawerOpen);
+    };
+  }
+
   if (addTokenBtn && tokenImageUpload) {
     addTokenBtn.onclick = () => {
       tokenImageUpload.click();
@@ -453,6 +473,7 @@
             borderColor: getNextTokenBorderColor()
           });
           tokenImageUpload.value = "";
+          setTokenDrawerOpen(true);
           updateTokenList();
           draw();
         };

@@ -261,56 +261,59 @@ a:hover{
   font-size:0.85rem;
 }
 
-/* Map Edit Controls (inline buttons) */
-#mapEditControls button{
-  width:48%;
-  display:inline-block;
-  padding:6px 4px;
-}
-
-#mapEditControls button:nth-child(4n+2){
-  margin-left:2%;
-}
-
-/* Map Movement Controls */
-#mapEditControls #mapMoveUp,
-#mapEditControls #mapMoveDown,
-#mapEditControls #mapMoveLeft,
-#mapEditControls #mapMoveRight{
+/* Drawer UI */
+.drawer-toggle,
+.map-drawer-toggle{
   width:100%;
-  padding:8px;
-  margin:4px 0;
-  background:#10b981;
-  color:white;
-  border:none;
-  border-radius:4px;
+  padding:10px 12px;
+  margin-top:8px;
+  background:#111827;
+  color:#fff;
+  border:1px solid #374151;
+  border-radius:8px;
   cursor:pointer;
-  font-size:0.85rem;
-  transition:all 0.2s ease;
+  text-align:left;
+  font-weight:600;
 }
 
-#mapEditControls #mapMoveUp:hover,
-#mapEditControls #mapMoveDown:hover,
-#mapEditControls #mapMoveLeft:hover,
-#mapEditControls #mapMoveRight:hover{
+.drawer-toggle:hover,
+.map-drawer-toggle:hover{
+  background:#1f2937;
+}
+
+.drawer-content,
+.map-drawer-content{
+  margin-top:8px;
+  padding:10px;
+  border:1px solid #374151;
+  border-radius:8px;
+  background:#202020;
+}
+
+.map-drawer{
+  margin-top:10px;
+  padding-bottom:10px;
+  border-bottom:1px solid #444;
+}
+
+.map-drawer-content{
+  background:#242424;
+}
+
+.map-drawer-content .map-grid-row,
+.map-drawer-content .map-position-row{
+  margin-bottom:8px;
+}
+
+.map-drawer-content .map-position-row button{
+  background:#10b981;
+}
+
+.map-drawer-content .map-position-row button:hover{
   background:#059669;
-  transform:scale(1.02);
-}
-
-#mapEditControls #mapMoveUp:active,
-#mapEditControls #mapMoveDown:active,
-#mapEditControls #mapMoveLeft:active,
-#mapEditControls #mapMoveRight:active{
-  transform:scale(0.98);
 }
 
 /* Token Controls Section */
-#tokenControls h4{
-  margin:8px 0 12px;
-  color:var(--accent);
-  font-size:1rem;
-}
-
 #addTokenBtn{
   width:100%;
   padding:8px;
