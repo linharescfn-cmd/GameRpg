@@ -12,13 +12,7 @@
   const imgW = document.getElementById("imgW");
   const imgH = document.getElementById("imgH");
   const applyMapBtn = document.getElementById("applyMap");
-  const mapNameLabel = document.getElementById("mapNameLabel");
-  const mapWValue = document.getElementById("mapWValue");
-  const mapHValue = document.getElementById("mapHValue");
-  const mapWPlus = document.getElementById("mapWPlus");
-  const mapWMinus = document.getElementById("mapWMinus");
-  const mapHPlus = document.getElementById("mapHPlus");
-  const mapHMinus = document.getElementById("mapHMinus");
+  const mapEditList = document.getElementById("mapEditList");
   const gridZoomIn = document.getElementById("gridZoomIn");
   const gridZoomOut = document.getElementById("gridZoomOut");
   const addTokenBtn = document.getElementById("addTokenBtn");
@@ -43,14 +37,7 @@
       cellMultiplier: 1,
       metersPerCell: null
     },
-    image: {
-      src: null,
-      widthCells: 10,
-      heightCells: 10,
-      anchor: { col: 3, row: 3 },
-      name: null,
-      active: false
-    },
+    maps: [],
     tokens: []
   };
 
@@ -65,7 +52,6 @@
   let height = 0;
   let zoom = 1;
   const BASE = 80;
-  let imgObj = null;
   let pendingImg = null;
   let pendingName = null;
   let pendingTokenImg = null;
@@ -101,19 +87,24 @@
           camera.y = gameData.camera.y || 0;
         }
 
-        // Aplicar imagem salva
-        if (gameData.image && gameData.image.src) {
-          pendingImg = new Image();
-          pendingImg.src = gameData.image.src;
-          pendingImg.onload = () => {
-            imgObj = pendingImg;
-            state.image = { ...gameData.image };
-            state.image.active = true;
-            document.getElementById("mapSetup").style.display = "none";
-            document.getElementById("mapEditControls").style.display = "block";
-            updateMapUI();
-            draw();
-          };
+        // Carregar imagens dos mapas salvos
+        if (gameData.state && gameData.state.maps && gameData.state.maps.length > 0) {
+          let loadedMaps = 0;
+          gameData.state.maps.forEach((map) => {
+            const img = new Image();
+            img.src = map.src;
+            img.onload = () => {
+              const existingMap = state.maps.find(m => m.id === map.id);
+              if (existingMap) {
+                existingMap.imageObj = img;
+              }
+              loadedMaps++;
+              if (loadedMaps === gameData.state.maps.length) {
+                updateMapList();
+                draw();
+              }
+            };
+          });
         }
 
         // Limpar sessionStorage
@@ -145,6 +136,191 @@
   };
 
   // =====================
+  // APPLY MAP
+  // =====================
+  function generateMapId() {
+    return "map_" + Date.now() + "_" + Math.random().toString(36).slice(2, 9);
+  }
+
+  applyMapBtn.onclick = () => {
+    if (!pendingImg) return alert("Selecione uma imagem");
+    
+    const mapId = generateMapId();
+    const mapNumber = state.maps.length + 1;
+    
+    const newMap = {
+      id: mapId,
+      src: pendingImg.src,
+      widthCells: parseInt(imgW.value) || 10,
+      heightCells: parseInt(imgH.value) || 10,
+      anchor: { col: 3, row: 3 },
+      number: mapNumber,
+      imageObj: pendingImg
+    };
+    
+    state.maps.push(newMap);
+    imgUpload.value = "";
+    updateMapList();
+    draw();
+  };
+
+  // =====================
+  // UPDATE MAP LIST (Gera controles dinamicamente)
+  // =====================
+  function updateMapList() {
+    mapEditList.innerHTML = "";
+    
+    state.maps.forEach((map, index) => {
+      const mapContainer = document.createElement("div");
+      mapContainer.className = "map-item";
+      mapContainer.style.marginTop = "10px";
+      mapContainer.style.paddingBottom = "12px";
+      mapContainer.style.borderBottom = "1px solid #444";
+      
+      // Título do mapa
+      const mapTitle = document.createElement("div");
+      mapTitle.style.marginBottom = "8px";
+      mapTitle.innerHTML = `<b>Mapa ${map.number}</b>`;
+      mapContainer.appendChild(mapTitle);
+      
+      // Controles de Largura
+      const widthDiv = document.createElement("div");
+      widthDiv.style.marginBottom = "8px";
+      widthDiv.innerHTML = `
+        <span style="font-size: 0.9rem; color: #ccc;">Largura:</span><br>
+      `;
+      const wMinusBtn = document.createElement("button");
+      wMinusBtn.textContent = "-";
+      wMinusBtn.style.width = "48%";
+      wMinusBtn.style.display = "inline-block";
+      wMinusBtn.onclick = () => {
+        if (map.widthCells > 1) {
+          map.widthCells--;
+          updateMapList();
+          draw();
+        }
+      };
+      
+      const wPlusBtn = document.createElement("button");
+      wPlusBtn.textContent = "+";
+      wPlusBtn.style.width = "48%";
+      wPlusBtn.style.display = "inline-block";
+      wPlusBtn.style.marginLeft = "2%";
+      wPlusBtn.onclick = () => {
+        map.widthCells++;
+        updateMapList();
+        draw();
+      };
+      
+      const wValueSpan = document.createElement("span");
+      wValueSpan.textContent = map.widthCells;
+      wValueSpan.style.marginLeft = "8px";
+      
+      widthDiv.appendChild(wMinusBtn);
+      widthDiv.appendChild(wPlusBtn);
+      widthDiv.appendChild(wValueSpan);
+      mapContainer.appendChild(widthDiv);
+      
+      // Controles de Altura
+      const heightDiv = document.createElement("div");
+      heightDiv.style.marginBottom = "8px";
+      heightDiv.innerHTML = `
+        <span style="font-size: 0.9rem; color: #ccc;">Altura:</span><br>
+      `;
+      const hMinusBtn = document.createElement("button");
+      hMinusBtn.textContent = "-";
+      hMinusBtn.style.width = "48%";
+      hMinusBtn.style.display = "inline-block";
+      hMinusBtn.onclick = () => {
+        if (map.heightCells > 1) {
+          map.heightCells--;
+          updateMapList();
+          draw();
+        }
+      };
+      
+      const hPlusBtn = document.createElement("button");
+      hPlusBtn.textContent = "+";
+      hPlusBtn.style.width = "48%";
+      hPlusBtn.style.display = "inline-block";
+      hPlusBtn.style.marginLeft = "2%";
+      hPlusBtn.onclick = () => {
+        map.heightCells++;
+        updateMapList();
+        draw();
+      };
+      
+      const hValueSpan = document.createElement("span");
+      hValueSpan.textContent = map.heightCells;
+      hValueSpan.style.marginLeft = "8px";
+      
+      heightDiv.appendChild(hMinusBtn);
+      heightDiv.appendChild(hPlusBtn);
+      heightDiv.appendChild(hValueSpan);
+      mapContainer.appendChild(heightDiv);
+      
+      // Controles de Posição
+      const posDiv = document.createElement("div");
+      posDiv.style.marginTop = "8px";
+      posDiv.innerHTML = `
+        <span style="font-size: 0.9rem; color: #ccc;">Posição:</span><br>
+      `;
+      
+      const upBtn = document.createElement("button");
+      upBtn.textContent = "⬆ Cima";
+      upBtn.style.width = "100%";
+      upBtn.style.padding = "6px";
+      upBtn.style.marginTop = "4px";
+      upBtn.style.background = "#10b981";
+      upBtn.onclick = () => {
+        map.anchor.row = Math.max(-100, map.anchor.row - 1);
+        draw();
+      };
+      
+      const downBtn = document.createElement("button");
+      downBtn.textContent = "⬇ Baixo";
+      downBtn.style.width = "100%";
+      downBtn.style.padding = "6px";
+      downBtn.style.marginTop = "4px";
+      downBtn.style.background = "#10b981";
+      downBtn.onclick = () => {
+        map.anchor.row = Math.min(100, map.anchor.row + 1);
+        draw();
+      };
+      
+      const leftBtn = document.createElement("button");
+      leftBtn.textContent = "⬅ Esquerda";
+      leftBtn.style.width = "100%";
+      leftBtn.style.padding = "6px";
+      leftBtn.style.marginTop = "4px";
+      leftBtn.style.background = "#10b981";
+      leftBtn.onclick = () => {
+        map.anchor.col = Math.max(-100, map.anchor.col - 1);
+        draw();
+      };
+      
+      const rightBtn = document.createElement("button");
+      rightBtn.textContent = "➡ Direita";
+      rightBtn.style.width = "100%";
+      rightBtn.style.padding = "6px";
+      rightBtn.style.marginTop = "4px";
+      rightBtn.style.background = "#10b981";
+      rightBtn.onclick = () => {
+        map.anchor.col = Math.min(100, map.anchor.col + 1);
+        draw();
+      };
+      
+      posDiv.appendChild(upBtn);
+      posDiv.appendChild(downBtn);
+      posDiv.appendChild(leftBtn);
+      posDiv.appendChild(rightBtn);
+      mapContainer.appendChild(posDiv);
+      
+      mapEditList.appendChild(mapContainer);
+    });
+  }
+
+  // =====================
   // MAP UPLOAD
   // =====================
   imgUpload.onchange = (e) => {
@@ -157,61 +333,6 @@
       pendingImg.src = ev.target.result;
     };
     reader.readAsDataURL(file);
-  };
-
-  // =====================
-  // APPLY MAP
-  // =====================
-  applyMapBtn.onclick = () => {
-    if (!pendingImg) return alert("Selecione uma imagem");
-    state.image.src = pendingImg.src;
-    state.image.widthCells = parseInt(imgW.value) || 10;
-    state.image.heightCells = parseInt(imgH.value) || 10;
-    state.image.name = pendingName;
-    state.image.active = true;
-    imgObj = pendingImg;
-    document.getElementById("mapSetup").style.display = "none";
-    document.getElementById("mapEditControls").style.display = "block";
-    updateMapUI();
-    draw();
-  };
-
-  // =====================
-  // MAP UI UPDATE
-  // =====================
-  function updateMapUI() {
-    mapNameLabel.innerText = "Mapa ativo: " + state.image.name;
-    mapWValue.innerText = state.image.widthCells;
-    mapHValue.innerText = state.image.heightCells;
-  }
-
-  // =====================
-  // MAP DIMENSIONS CONTROLS
-  // =====================
-  mapWPlus.onclick = () => {
-    state.image.widthCells++;
-    updateMapUI();
-    draw();
-  };
-
-  mapWMinus.onclick = () => {
-    if (state.image.widthCells <= 1) return;
-    state.image.widthCells--;
-    updateMapUI();
-    draw();
-  };
-
-  mapHPlus.onclick = () => {
-    state.image.heightCells++;
-    updateMapUI();
-    draw();
-  };
-
-  mapHMinus.onclick = () => {
-    if (state.image.heightCells <= 1) return;
-    state.image.heightCells--;
-    updateMapUI();
-    draw();
   };
 
   // =====================
@@ -494,16 +615,18 @@
   }, { passive: false });
 
   // =====================
-  // DRAW IMAGE
+  // DRAW IMAGES (All maps)
   // =====================
   function drawImage() {
-    if (!state.image.active || !imgObj) return;
-    const size = BASE * state.grid.cellMultiplier * zoom;
-    const x = state.image.anchor.col * size + camera.x;
-    const y = state.image.anchor.row * size + camera.y;
-    const w = state.image.widthCells * size;
-    const h = state.image.heightCells * size;
-    ctx.drawImage(imgObj, x, y, w, h);
+    state.maps.forEach((map) => {
+      if (!map.imageObj || !map.imageObj.complete) return;
+      const size = BASE * state.grid.cellMultiplier * zoom;
+      const x = map.anchor.col * size + camera.x;
+      const y = map.anchor.row * size + camera.y;
+      const w = map.widthCells * size;
+      const h = map.heightCells * size;
+      ctx.drawImage(map.imageObj, x, y, w, h);
+    });
   }
 
   // =====================
@@ -781,8 +904,7 @@
     saveState() {
       return {
         state,
-        camera,
-        image: state.image
+        camera
       };
     }
   };
