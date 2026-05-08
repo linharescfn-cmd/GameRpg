@@ -52,6 +52,23 @@
       <div id="enemyTokenDrawerContent" class="drawer-content" style="display:none;">
         <div id="enemyTokenList" style="margin-top:12px;"></div>
       </div>
+
+      <hr>
+
+      <!-- Ferramentas de Cenário -->
+      <div id="toolsControls">
+        <button id="toolsDrawerBtn" class="drawer-toggle tools-toggle" type="button" aria-expanded="false">🛠️ Ferramentas</button>
+        <div id="toolsDrawerContent" class="drawer-content" style="display:none;">
+          <button id="fogToggleBtn" class="tool-btn fog-btn">Névoa</button>
+          <button id="fogEraserBtn" class="tool-btn eraser-btn">Borracha</button>
+          <div id="fogSettings" style="display:none;margin-top:8px;">
+            <label>Tamanho do pincel:</label>
+            <input type="range" id="fogBrushSize" min="10" max="100" value="40" style="width:100%;margin:4px 0;">
+            <span id="fogSizeValue">40px</span>
+            <button id="fogClearBtn" style="width:100%;margin-top:8px;background:#666;padding:6px;">Limpar Névoa</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

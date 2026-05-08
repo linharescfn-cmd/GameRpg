@@ -25,6 +25,17 @@
   const enemyTokenImageUpload = document.getElementById("enemyTokenImageUpload");
   const tokenList = document.getElementById("tokenList");
   const enemyTokenList = document.getElementById("enemyTokenList");
+  
+  // Tools Drawer
+  const toolsDrawerBtn = document.getElementById("toolsDrawerBtn");
+  const toolsDrawerContent = document.getElementById("toolsDrawerContent");
+  const fogToggleBtn = document.getElementById("fogToggleBtn");
+  const fogEraserBtn = document.getElementById("fogEraserBtn");
+  const fogSettings = document.getElementById("fogSettings");
+  const fogBrushSize = document.getElementById("fogBrushSize");
+  const fogSizeValue = document.getElementById("fogSizeValue");
+  const fogClearBtn = document.getElementById("fogClearBtn");
+  
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
   const editorEl = document.getElementById("editor");
@@ -46,7 +57,14 @@
     },
     maps: [],
     tokens: [],
-    enemyTokens: []
+    enemyTokens: [],
+    fog: {
+      active: false,
+      brushSize: 40,
+      canvas: null,
+      ctx: null,
+      imageData: null
+    }
   };
 
   // =====================
@@ -78,6 +96,8 @@
   const openMapIds = new Set();
   let tokenDrawerOpen = false;
   let enemyTokenDrawerOpen = false;
+  let toolsDrawerOpen = false;
+  let fogToolMode = null;
 
   // =====================
   // LOAD SAVED GAME DATA
@@ -516,6 +536,37 @@
     }
   }
 
+  function setToolsDrawerOpen(open) {
+    toolsDrawerOpen = open;
+    if (toolsDrawerBtn) {
+      toolsDrawerBtn.setAttribute("aria-expanded", String(open));
+    }
+    if (toolsDrawerContent) {
+      toolsDrawerContent.style.display = open ? "block" : "none";
+    }
+  }
+
+  function setFogToolMode(mode) {
+    fogToolMode = mode;
+    state.fog.active = mode !== null;
+    if (fogToggleBtn) {
+      fogToggleBtn.classList.toggle("active", mode === "paint");
+    }
+    if (fogEraserBtn) {
+      fogEraserBtn.classList.toggle("active", mode === "erase");
+    }
+    if (fogSettings) {
+      fogSettings.style.display = mode !== null ? "block" : "none";
+    }
+    activeBrushPointers.clear();
+  }
+
+  function clearFog() {
+    if (state.fog.ctx) {
+      state.fog.ctx.clearRect(0, 0, state.fog.canvas.width, state.fog.canvas.height);
+    }
+  }
+
   if (tokenDrawerBtn) {
     tokenDrawerBtn.onclick = () => {
       setTokenDrawerOpen(!tokenDrawerOpen);
@@ -525,6 +576,40 @@
   if (enemyTokenDrawerBtn) {
     enemyTokenDrawerBtn.onclick = () => {
       setEnemyTokenDrawerOpen(!enemyTokenDrawerOpen);
+    };
+  }
+
+  if (toolsDrawerBtn) {
+    toolsDrawerBtn.onclick = () => {
+      setToolsDrawerOpen(!toolsDrawerOpen);
+    };
+  }
+
+  if (fogToggleBtn) {
+    fogToggleBtn.onclick = () => {
+      setFogToolMode(fogToolMode === "paint" ? null : "paint");
+    };
+  }
+
+  if (fogEraserBtn) {
+    fogEraserBtn.onclick = () => {
+      setFogToolMode(fogToolMode === "erase" ? null : "erase");
+    };
+  }
+
+  if (fogBrushSize) {
+    fogBrushSize.oninput = () => {
+      state.fog.brushSize = parseInt(fogBrushSize.value, 10);
+      if (fogSizeValue) {
+        fogSizeValue.textContent = state.fog.brushSize + "px";
+      }
+    };
+  }
+
+  if (fogClearBtn) {
+    fogClearBtn.onclick = () => {
+      clearFog();
+      draw();
     };
   }
 
@@ -588,6 +673,7 @@
   // CAMERA DRAG / PINCH / WHEEL ZOOM
   // =====================
   const pointers = new Map();
+  const activeBrushPointers = new Set();
   let pinchState = null;
   const MIN_ZOOM = 0.25;
   const MAX_ZOOM = 4;
@@ -634,11 +720,32 @@
     return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   }
 
+  function isGridPoint(pt) {
+    return pt.x >= 0 && pt.x <= width && pt.y >= 0 && pt.y <= height;
+  }
+
+  function applyFogTool(pt) {
+    if (!isGridPoint(pt)) return;
+    if (fogToolMode === "paint") {
+      paintFog(pt);
+    } else if (fogToolMode === "erase") {
+      eraseFog(pt);
+    }
+    draw();
+  }
+
   function onPointerDown(e) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     const pt = getCanvasPoint(e);
     pointers.set(e.pointerId, pt);
     canvas.setPointerCapture(e.pointerId);
+
+    if (fogToolMode) {
+      activeBrushPointers.add(e.pointerId);
+      applyFogTool(pt);
+      e.preventDefault();
+      return;
+    }
 
     const hitToken = getTokenAtPoint(pt);
     if (hitToken) {
@@ -672,6 +779,12 @@
     if (!pointers.has(e.pointerId)) return;
     const pt = getCanvasPoint(e);
     pointers.set(e.pointerId, pt);
+
+    if (fogToolMode && activeBrushPointers.has(e.pointerId)) {
+      applyFogTool(pt);
+      e.preventDefault();
+      return;
+    }
 
     if (pinchState && pointers.size >= 2) {
       const ps = Array.from(pointers.values());
@@ -708,6 +821,7 @@
 
   function onPointerUp(e) {
     pointers.delete(e.pointerId);
+    activeBrushPointers.delete(e.pointerId);
     try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
 
     if (draggingToken && e.pointerId === draggingTokenPointerId) {
@@ -780,13 +894,36 @@
   // =====================
   // DRAW TOKENS
   // =====================
-  function drawTokens() {
-    const allTokens = [
-      ...state.tokens.map((token) => ({ token, group: "tokens" })),
-      ...state.enemyTokens.map((token) => ({ token, group: "enemyTokens" }))
-    ];
+  function drawEnemyTokens() {
+    state.enemyTokens.forEach((token) => {
+      const center = worldToScreen({ x: token.x, y: token.y });
+      const size = token.size * zoom;
+      const rx = size / 2;
+      const ry = size / 2;
 
-    allTokens.forEach(({ token }) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(center.x, center.y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      if (token.imageObj && token.imageObj.complete) {
+        ctx.drawImage(token.imageObj, center.x - rx, center.y - ry, size, size);
+      } else {
+        ctx.fillStyle = "#555";
+        ctx.fillRect(center.x - rx, center.y - ry, size, size);
+      }
+      ctx.restore();
+
+      ctx.strokeStyle = token.borderColor || "#ef4444";
+      ctx.lineWidth = token.borderWidth || 4;
+      ctx.beginPath();
+      ctx.ellipse(center.x, center.y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+  }
+
+  function drawTokens() {
+    state.tokens.forEach((token) => {
       const center = worldToScreen({ x: token.x, y: token.y });
       const size = token.size * zoom;
       const rx = size / 2;
@@ -811,6 +948,63 @@
       ctx.ellipse(center.x, center.y, rx, ry, 0, 0, Math.PI * 2);
       ctx.stroke();
     });
+  }
+
+  function drawFog() {
+    if (!state.fog.canvas || !state.fog.ctx) return;
+    
+    // Desenhar o fog canvas no canvas principal
+    ctx.drawImage(state.fog.canvas, 0, 0);
+  }
+
+  function paintFog(screenPoint) {
+    if (!state.fog.ctx) return;
+    const brushSize = state.fog.brushSize;
+    const fogCtx = state.fog.ctx;
+
+    const gradient = fogCtx.createRadialGradient(
+      screenPoint.x, screenPoint.y, 0,
+      screenPoint.x, screenPoint.y, brushSize
+    );
+    gradient.addColorStop(0, "rgba(48,48,48,0.82)");
+    gradient.addColorStop(0.7, "rgba(48,48,48,0.45)");
+    gradient.addColorStop(1, "rgba(48,48,48,0)");
+
+    fogCtx.save();
+    fogCtx.globalCompositeOperation = "source-over";
+    fogCtx.fillStyle = gradient;
+    fogCtx.fillRect(
+      screenPoint.x - brushSize,
+      screenPoint.y - brushSize,
+      brushSize * 2,
+      brushSize * 2
+    );
+    fogCtx.restore();
+  }
+
+  function eraseFog(screenPoint) {
+    if (!state.fog.ctx) return;
+    const brushSize = state.fog.brushSize;
+    const fogCtx = state.fog.ctx;
+
+    const gradient = fogCtx.createRadialGradient(
+      screenPoint.x, screenPoint.y, 0,
+      screenPoint.x, screenPoint.y, brushSize
+    );
+    gradient.addColorStop(0, "rgba(0,0,0,0.95)");
+    gradient.addColorStop(0.8, "rgba(0,0,0,0.45)");
+    gradient.addColorStop(1, "rgba(0,0,0,0)");
+
+    fogCtx.save();
+    fogCtx.globalCompositeOperation = "destination-out";
+    fogCtx.fillStyle = gradient;
+    fogCtx.fillRect(
+      screenPoint.x - brushSize,
+      screenPoint.y - brushSize,
+      brushSize * 2,
+      brushSize * 2
+    );
+    fogCtx.restore();
   }
 
   // =====================
@@ -883,6 +1077,8 @@
     ctx.fillRect(0, 0, width, height);
     drawGrid();
     drawImage();
+    drawEnemyTokens();
+    drawFog();
     drawTokens();
     drawMovementPath();
     
@@ -899,6 +1095,16 @@
     height = innerHeight - 30; // Offset pela régua topo
     canvas.width = width;
     canvas.height = height;
+    
+    // Fog canvas
+    if (!state.fog.canvas) {
+      state.fog.canvas = document.createElement("canvas");
+    }
+    state.fog.canvas.width = width;
+    state.fog.canvas.height = height;
+    if (!state.fog.ctx) {
+      state.fog.ctx = state.fog.canvas.getContext("2d");
+    }
     
     // Redimensionar réguas
     topRuler.width = width;
