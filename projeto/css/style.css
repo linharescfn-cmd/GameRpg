@@ -234,8 +234,9 @@ a:hover{
   color:#ccc;
 }
 
-/* Sidebar Buttons */
-#sidebar button{
+/* Sidebar Buttons - Padrão (Setup de Mapa) */
+#mapSetup button,
+#scaleBox button{
   width:100%;
   padding:8px;
   margin:4px 0;
@@ -247,7 +248,8 @@ a:hover{
   font-size:0.9rem;
 }
 
-#sidebar button:hover{
+#mapSetup button:hover,
+#scaleBox button:hover{
   background:#2563eb;
 }
 
@@ -287,45 +289,43 @@ a:hover{
 
 /* Tokens Adicionados - Verde */
 #tokenDrawerBtn{
-  background:#16a34a;
-  border-color:#15803d;
+  background:#10b981;
+  border-color:#059669;
 }
 
 #tokenDrawerBtn:hover{
-  background:#15803d;
+  background:#059669;
 }
 
 /* Tokens Inimigos - Vermelho */
 #enemyTokenDrawerBtn{
-  background:#dc2626;
-  border-color:#b91c1c;
+  background:#ef4444;
+  border-color:#dc2626;
 }
 
 #enemyTokenDrawerBtn:hover{
-  background:#b91c1c;
+  background:#dc2626;
 }
 
 .map-drawer-content,
 .drawer-content{
   margin-top:8px;
   padding:10px;
-  border:1px solid transparent;
-  border-radius:8px;
+  border:2px solid transparent;
+  border-radius:6px;
+  background:#1a1a1a;
 }
 
 .map-drawer-content{
-  background:#2a1a10;
   border-color:#f97316;
 }
 
-.drawer-content{
-  background:#122515;
-  border-color:#16a34a;
+#tokenDrawerContent{
+  border-color:#10b981;
 }
 
 #enemyTokenDrawerContent{
-  background:#2a1212;
-  border-color:#dc2626;
+  border-color:#ef4444;
 }
 
 .map-drawer{
@@ -339,45 +339,64 @@ a:hover{
   margin-bottom:8px;
 }
 
+.map-drawer-content button{
+  background:#f97316;
+  color:white;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:0.85rem;
+  padding:6px;
+  margin:2px;
+}
+
+.map-drawer-content button:hover{
+  background:#ea580c;
+}
+
 .map-drawer-content .map-position-row button{
-  background:#10b981;
+  background:#f97316;
 }
 
 .map-drawer-content .map-position-row button:hover{
-  background:#059669;
+  background:#ea580c;
 }
 
 /* Token Controls Section */
+/* Botão Adicionar Token Aliados - Verde */
 #addTokenBtn{
   width:100%;
   padding:8px;
-  background:var(--accent);
+  background:#10b981;
   color:white;
   border:none;
   border-radius:4px;
   cursor:pointer;
   font-size:0.9rem;
   margin-bottom:12px;
+  font-weight:600;
 }
 
 #addTokenBtn:hover{
-  background:#2563eb;
+  background:#059669;
 }
 
+/* Botão Adicionar Token Inimigos - Vermelho */
 #addEnemyTokenBtn{
   width:100%;
   padding:8px;
-  background:#991b1b;
+  background:#ef4444;
   color:white;
   border:none;
   border-radius:4px;
   cursor:pointer;
   font-size:0.9rem;
   margin-bottom:12px;
+  font-weight:600;
 }
 
 #addEnemyTokenBtn:hover{
-  background:#b91c1c;
+  background:#dc2626;
 }
 
 #tokenList{
@@ -396,10 +415,10 @@ a:hover{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  background:#2a2a2a;
+  background:#1f2937;
   padding:8px;
   border-radius:4px;
-  border:1px solid #3b82f6;
+  border:1px solid #10b981;
 }
 
 .token-item .token-icon{
@@ -408,7 +427,7 @@ a:hover{
   border-radius:50%;
   object-fit:cover;
   margin-right:8px;
-  border:2px solid var(--accent);
+  border:2px solid #10b981;
 }
 
 .token-item .token-actions{
@@ -421,7 +440,7 @@ a:hover{
   width:28px;
   height:28px;
   padding:0;
-  background:#3b82f6;
+  background:#10b981;
   color:white;
   border:none;
   border-radius:3px;
@@ -433,7 +452,7 @@ a:hover{
 }
 
 .token-item button:hover{
-  background:#2563eb;
+  background:#059669;
 }
 
 .token-item .btn-delete{
@@ -441,6 +460,30 @@ a:hover{
 }
 
 .token-item .btn-delete:hover{
+  background:#dc2626;
+}
+
+#enemyTokenList .token-item{
+  border:1px solid #ef4444;
+}
+
+#enemyTokenList .token-item .token-icon{
+  border-color:#ef4444;
+}
+
+#enemyTokenList .token-item button{
+  background:#ef4444;
+}
+
+#enemyTokenList .token-item button:hover{
+  background:#dc2626;
+}
+
+#enemyTokenList .token-item .btn-delete{
+  background:#ef4444;
+}
+
+#enemyTokenList .token-item .btn-delete:hover{
   background:#dc2626;
 }
 
