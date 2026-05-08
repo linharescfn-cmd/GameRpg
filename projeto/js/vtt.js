@@ -63,7 +63,8 @@
       brushSize: 40,
       canvas: null,
       ctx: null,
-      imageData: null
+      imageData: null,
+      strokes: []
     }
   };
 
@@ -111,6 +112,17 @@
         // Aplicar state salvo
         if (gameData.state) {
           Object.assign(state, gameData.state);
+          state.fog = Object.assign({
+            active: false,
+            brushSize: 40,
+            canvas: null,
+            ctx: null,
+            imageData: null,
+            strokes: []
+          }, state.fog || {});
+          if (!Array.isArray(state.fog.strokes)) {
+            state.fog.strokes = [];
+          }
         }
 
         setTokenDrawerOpen(Array.isArray(state.tokens) && state.tokens.length > 0);
@@ -562,7 +574,8 @@
   }
 
   function clearFog() {
-    if (state.fog.ctx) {
+    state.fog.strokes = [];
+    if (state.fog.ctx && state.fog.canvas) {
       state.fog.ctx.clearRect(0, 0, state.fog.canvas.width, state.fog.canvas.height);
     }
   }
@@ -952,59 +965,76 @@
 
   function drawFog() {
     if (!state.fog.canvas || !state.fog.ctx) return;
-    
-    // Desenhar o fog canvas no canvas principal
+
+    const fogCtx = state.fog.ctx;
+    fogCtx.clearRect(0, 0, state.fog.canvas.width, state.fog.canvas.height);
+
+    const strokes = Array.isArray(state.fog.strokes) ? state.fog.strokes : [];
+    strokes.forEach((stroke) => {
+      const screenPoint = worldToScreen({ x: stroke.x, y: stroke.y });
+      const brushSize = stroke.radiusWorld * getCellSize();
+      if (brushSize <= 0) return;
+
+      // Skip básico para reduzir custo de render fora da viewport.
+      if (
+        screenPoint.x + brushSize < 0 ||
+        screenPoint.x - brushSize > width ||
+        screenPoint.y + brushSize < 0 ||
+        screenPoint.y - brushSize > height
+      ) {
+        return;
+      }
+
+      const gradient = fogCtx.createRadialGradient(
+        screenPoint.x, screenPoint.y, 0,
+        screenPoint.x, screenPoint.y, brushSize
+      );
+
+      if (stroke.mode === "paint") {
+        gradient.addColorStop(0, "rgba(48,48,48,0.82)");
+        gradient.addColorStop(0.7, "rgba(48,48,48,0.45)");
+        gradient.addColorStop(1, "rgba(48,48,48,0)");
+      } else {
+        gradient.addColorStop(0, "rgba(0,0,0,0.95)");
+        gradient.addColorStop(0.8, "rgba(0,0,0,0.45)");
+        gradient.addColorStop(1, "rgba(0,0,0,0)");
+      }
+
+      fogCtx.save();
+      fogCtx.globalCompositeOperation = stroke.mode === "paint" ? "source-over" : "destination-out";
+      fogCtx.fillStyle = gradient;
+      fogCtx.fillRect(
+        screenPoint.x - brushSize,
+        screenPoint.y - brushSize,
+        brushSize * 2,
+        brushSize * 2
+      );
+      fogCtx.restore();
+    });
+
     ctx.drawImage(state.fog.canvas, 0, 0);
   }
 
   function paintFog(screenPoint) {
-    if (!state.fog.ctx) return;
-    const brushSize = state.fog.brushSize;
-    const fogCtx = state.fog.ctx;
-
-    const gradient = fogCtx.createRadialGradient(
-      screenPoint.x, screenPoint.y, 0,
-      screenPoint.x, screenPoint.y, brushSize
-    );
-    gradient.addColorStop(0, "rgba(48,48,48,0.82)");
-    gradient.addColorStop(0.7, "rgba(48,48,48,0.45)");
-    gradient.addColorStop(1, "rgba(48,48,48,0)");
-
-    fogCtx.save();
-    fogCtx.globalCompositeOperation = "source-over";
-    fogCtx.fillStyle = gradient;
-    fogCtx.fillRect(
-      screenPoint.x - brushSize,
-      screenPoint.y - brushSize,
-      brushSize * 2,
-      brushSize * 2
-    );
-    fogCtx.restore();
+    const worldPoint = screenToWorld(screenPoint);
+    const radiusWorld = state.fog.brushSize / getCellSize();
+    state.fog.strokes.push({
+      mode: "paint",
+      x: worldPoint.x,
+      y: worldPoint.y,
+      radiusWorld
+    });
   }
 
   function eraseFog(screenPoint) {
-    if (!state.fog.ctx) return;
-    const brushSize = state.fog.brushSize;
-    const fogCtx = state.fog.ctx;
-
-    const gradient = fogCtx.createRadialGradient(
-      screenPoint.x, screenPoint.y, 0,
-      screenPoint.x, screenPoint.y, brushSize
-    );
-    gradient.addColorStop(0, "rgba(0,0,0,0.95)");
-    gradient.addColorStop(0.8, "rgba(0,0,0,0.45)");
-    gradient.addColorStop(1, "rgba(0,0,0,0)");
-
-    fogCtx.save();
-    fogCtx.globalCompositeOperation = "destination-out";
-    fogCtx.fillStyle = gradient;
-    fogCtx.fillRect(
-      screenPoint.x - brushSize,
-      screenPoint.y - brushSize,
-      brushSize * 2,
-      brushSize * 2
-    );
-    fogCtx.restore();
+    const worldPoint = screenToWorld(screenPoint);
+    const radiusWorld = state.fog.brushSize / getCellSize();
+    state.fog.strokes.push({
+      mode: "erase",
+      x: worldPoint.x,
+      y: worldPoint.y,
+      radiusWorld
+    });
   }
 
   // =====================
