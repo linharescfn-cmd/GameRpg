@@ -202,7 +202,28 @@
 
       if(!rollBtn || !chatSendBtn) return;
 
-      // Helper para simular rolar dados
+      function secureRandomInt(maxExclusive){
+        if(!window.crypto || typeof window.crypto.getRandomValues !== 'function'){
+          throw new Error('A API de aleatoriedade segura do navegador não está disponível.');
+        }
+
+        if(!Number.isInteger(maxExclusive) || maxExclusive <= 0){
+          throw new Error('Limite inválido para geração aleatória.');
+        }
+
+        const limit = Math.floor(0x100000000 / maxExclusive) * maxExclusive;
+        const buffer = new Uint32Array(1);
+        let value;
+
+        do {
+          window.crypto.getRandomValues(buffer);
+          value = buffer[0];
+        } while(value >= limit);
+
+        return value % maxExclusive;
+      }
+
+      // Helper para simular rolar dados com aleatoriedade criptograficamente segura
       function rollDice(expression){
         // Simples parse: "1d20+5" -> result
         const regex = /(\d+)d(\d+)(?:\+(\d+))?(?:-(\d+))?/i;
@@ -214,25 +235,35 @@
         const diceSize = parseInt(match[2]);
         const add = match[3] ? parseInt(match[3]) : 0;
         const sub = match[4] ? parseInt(match[4]) : 0;
-        
+
+        const rolls = [];
         let total = 0;
+
         for(let i = 0; i < numDice; i++){
-          total += Math.floor(Math.random() * diceSize) + 1;
+          const roll = secureRandomInt(diceSize) + 1;
+          rolls.push(roll);
+          total += roll;
         }
+
         total += add - sub;
         
-        return { rolls: Array(numDice).fill(0).map(() => Math.floor(Math.random() * diceSize) + 1), total, expression };
+        return { rolls, total, expression };
       }
 
       // Roll Dados (da barra direita - mostra detalhes)
       rollBtn.addEventListener('click', ()=>{
         const rollText = rollInput.value.trim();
         if(!rollText) return;
-        
-        // Mock roll result (sem validação complexa)
+
+        const result = rollDice(rollText);
+        if(!result){
+          alert('Formato inválido. Use: 1d20, 2d6+3, etc');
+          return;
+        }
+
         const resultMsg = document.createElement('div');
         resultMsg.className = 'chat-message gm-message';
-        resultMsg.innerHTML = `<strong>Rolou:</strong> ${rollText} = <span style="color:#60a5fa;">42</span>`;
+        resultMsg.innerHTML = `<strong>Rolou:</strong> ${rollText} = <span style="color:#60a5fa;">${result.total}</span>`;
         chatMessages.appendChild(resultMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
