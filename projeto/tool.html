@@ -17,12 +17,14 @@
       }
     })();
   </script>
-  <!-- Toggle Button para Sidebar -->
-  <button id="toggleBtn">☰</button>
+  <!-- Toggle interno para Sidebar (substitui toggle antigo) -->
 
   <!-- Sidebar com Ferramentas -->
   <div id="sidebar">
-    <h3>Ferramentas</h3>
+    <div class="lt-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+      <h3 style="margin:0">Ferramentas</h3>
+      <button id="leftToolbarToggle" class="lt-toggle" aria-pressed="false">✕</button>
+    </div>
     <button id="toggleRightToolbarBtn" class="btn-secondary" style="margin-bottom:8px;">Mostrar/Ocultar Barra Direita</button>
 
     <!-- Rolar Dados do Mestre -->
@@ -127,6 +129,8 @@
 
   <!-- Botão flutuante para abrir a barra quando estiver ocultada -->
   <button id="rightToolbarOpen" class="rt-open" aria-hidden="false" aria-label="Abrir barra de ferramentas">⚙</button>
+  <!-- Botão flutuante para abrir a barra esquerda quando estiver ocultada -->
+  <button id="leftToolbarOpen" class="lt-open" aria-hidden="false" aria-label="Abrir barra esquerda">☰</button>
   <!-- Rulers Container -->
   <div class="rulers-container">
     <!-- Top Ruler (Colunas A, B, C, etc) -->
@@ -189,6 +193,39 @@
         openBtn.classList.add('hidden');
       }
     })();
+  
+      // Toggle da barra esquerda (novo comportamento espelhado)
+      (function(){
+        const leftSidebar = document.getElementById('sidebar');
+        const leftOpenBtn = document.getElementById('leftToolbarOpen');
+        const leftToggleBtn = document.getElementById('leftToolbarToggle');
+
+        if(!leftSidebar || !leftOpenBtn || !leftToggleBtn) return;
+
+        function openLeft(){
+          leftSidebar.classList.remove('hidden');
+          leftSidebar.setAttribute('aria-hidden','false');
+          leftOpenBtn.classList.add('hidden');
+          leftToggleBtn.setAttribute('aria-pressed','false');
+        }
+
+        function closeLeft(){
+          leftSidebar.classList.add('hidden');
+          leftSidebar.setAttribute('aria-hidden','true');
+          leftOpenBtn.classList.remove('hidden');
+          leftToggleBtn.setAttribute('aria-pressed','true');
+        }
+
+        leftOpenBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openLeft(); });
+        leftToggleBtn.addEventListener('click', ()=>{ closeLeft(); });
+
+        // Inicialmente, mostrar botão flutuante se a sidebar estiver ocultada
+        if(leftSidebar.classList.contains('hidden')){
+          leftOpenBtn.classList.remove('hidden');
+        } else {
+          leftOpenBtn.classList.add('hidden');
+        }
+      })();
   </script>
   <script>
     (async function(){
