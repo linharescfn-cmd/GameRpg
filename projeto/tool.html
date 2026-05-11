@@ -13,6 +13,16 @@
   <!-- Sidebar com Ferramentas -->
   <div id="sidebar">
     <h3>Ferramentas</h3>
+    <button id="toggleRightToolbarBtn" class="btn-secondary" style="margin-bottom:8px;">Mostrar/Ocultar Barra Direita</button>
+
+    <!-- Rolar Dados do Mestre -->
+    <div id="masterRollBox" style="margin-bottom:12px; padding:10px; background:#2a2a2a; border-radius:6px; border:1px solid #3b82f6;">
+      <label style="display:block; font-size:0.9rem; color:#ccc; margin-bottom:6px; font-weight:600;">Rolar Dados (Resultado para Chat)</label>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="masterRollInput" placeholder="ex: 2d6+3" style="flex:1; padding:6px; background:#1a1a1a; border:1px solid #444; border-radius:4px; color:white; font-family:monospace; font-size:0.9rem;">
+        <button id="masterRollBtn" style="padding:6px 12px; background:#3b82f6; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.9rem;">Rolar</button>
+      </div>
+    </div>
 
     <!-- Controles de Escala -->
     <div id="scaleBox">
@@ -74,6 +84,39 @@
 
   <!-- Grid Scale Control removed: zoom agora é por scroll e pinça -->
 
+  <!-- Barra de Ferramentas Direita -->
+  <div id="rightToolbar" class="right-toolbar collapsed" aria-hidden="true">
+    <div class="rt-header">
+      <h3>Ferramentas do Jogador</h3>
+      <button id="rightToolbarToggle" class="rt-toggle" aria-pressed="false">✕</button>
+    </div>
+    <div id="rightToolbarContent" class="rt-content">
+      <!-- Rolar Dados -->
+      <div class="roll-section">
+        <label for="rollInput">Rolar:</label>
+        <div class="roll-input-group">
+          <input type="text" id="rollInput" placeholder="ex: 1d20+5" class="roll-input">
+          <button id="rollBtn" class="roll-btn">Rolar</button>
+        </div>
+      </div>
+
+      <!-- Chat -->
+      <div class="chat-section">
+        <div class="chat-tabs">
+          <button class="chat-tab active" data-tab="general">Geral</button>
+          <button class="chat-tab" data-tab="private">Privado</button>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-group">
+          <input type="text" id="chatInput" placeholder="Digite sua mensagem..." class="chat-input">
+          <button id="chatSendBtn" class="chat-send-btn">Enviar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botão flutuante para abrir a barra quando estiver ocultada -->
+  <button id="rightToolbarOpen" class="rt-open" aria-hidden="false" aria-label="Abrir barra de ferramentas">⚙</button>
   <!-- Rulers Container -->
   <div class="rulers-container">
     <!-- Top Ruler (Colunas A, B, C, etc) -->
@@ -92,11 +135,164 @@
   <script src="js/storage.js"></script>
   <script src="js/vtt.js"></script>
   <script>
+    // Toggle da barra direita (vazia)
+    (function(){
+      const toolbar = document.getElementById('rightToolbar');
+      const openBtn = document.getElementById('rightToolbarOpen');
+      const toggleBtn = document.getElementById('rightToolbarToggle');
+
+      if(!toolbar || !openBtn || !toggleBtn) return;
+
+      function openToolbar(){
+        toolbar.classList.remove('collapsed');
+        toolbar.setAttribute('aria-hidden','false');
+        openBtn.classList.add('hidden');
+        toggleBtn.setAttribute('aria-pressed','false');
+      }
+
+      function closeToolbar(){
+        toolbar.classList.add('collapsed');
+        toolbar.setAttribute('aria-hidden','true');
+        openBtn.classList.remove('hidden');
+        toggleBtn.setAttribute('aria-pressed','true');
+      }
+
+      openBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openToolbar(); });
+      toggleBtn.addEventListener('click', ()=>{ closeToolbar(); });
+
+      // Botão adicional no sidebar para alternar a barra direita
+      const externalToggleBtn = document.getElementById('toggleRightToolbarBtn');
+      if(externalToggleBtn){
+        externalToggleBtn.addEventListener('click', ()=>{
+          if(toolbar.classList.contains('collapsed')){
+            openToolbar();
+          } else {
+            closeToolbar();
+          }
+        });
+      }
+
+      // Inicialmente, manter botão open visível se estiver collapsed
+      if(toolbar.classList.contains('collapsed')){
+        openBtn.classList.remove('hidden');
+      } else {
+        openBtn.classList.add('hidden');
+      }
+    })();
+  </script>
+  <script>
     (async function(){
       const params = new URLSearchParams(location.search);
       const filename = params.get('campaign');
       const campaign = filename ? await window.Storage.loadCampaign(filename) : null;
       window.VTT.init(campaign);
+    })();
+  </script>
+  <script>
+    // Chat e Roll Dados
+    (function(){
+      const rollBtn = document.getElementById('rollBtn');
+      const rollInput = document.getElementById('rollInput');
+      const chatSendBtn = document.getElementById('chatSendBtn');
+      const chatInput = document.getElementById('chatInput');
+      const chatMessages = document.getElementById('chatMessages');
+      const chatTabs = document.querySelectorAll('.chat-tab');
+      const masterRollBtn = document.getElementById('masterRollBtn');
+      const masterRollInput = document.getElementById('masterRollInput');
+
+      if(!rollBtn || !chatSendBtn) return;
+
+      // Helper para simular rolar dados
+      function rollDice(expression){
+        // Simples parse: "1d20+5" -> result
+        const regex = /(\d+)d(\d+)(?:\+(\d+))?(?:-(\d+))?/i;
+        const match = expression.trim().match(regex);
+        
+        if(!match) return null;
+        
+        const numDice = parseInt(match[1]);
+        const diceSize = parseInt(match[2]);
+        const add = match[3] ? parseInt(match[3]) : 0;
+        const sub = match[4] ? parseInt(match[4]) : 0;
+        
+        let total = 0;
+        for(let i = 0; i < numDice; i++){
+          total += Math.floor(Math.random() * diceSize) + 1;
+        }
+        total += add - sub;
+        
+        return { rolls: Array(numDice).fill(0).map(() => Math.floor(Math.random() * diceSize) + 1), total, expression };
+      }
+
+      // Roll Dados (da barra direita - mostra detalhes)
+      rollBtn.addEventListener('click', ()=>{
+        const rollText = rollInput.value.trim();
+        if(!rollText) return;
+        
+        // Mock roll result (sem validação complexa)
+        const resultMsg = document.createElement('div');
+        resultMsg.className = 'chat-message gm-message';
+        resultMsg.innerHTML = `<strong>Rolou:</strong> ${rollText} = <span style="color:#60a5fa;">42</span>`;
+        chatMessages.appendChild(resultMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        rollInput.value = '';
+      });
+
+      rollInput.addEventListener('keypress', (e)=>{
+        if(e.key === 'Enter') rollBtn.click();
+      });
+
+      // Roll Dados do Mestre (da barra esquerda - só resultado no chat)
+      masterRollBtn.addEventListener('click', ()=>{
+        const rollText = masterRollInput.value.trim();
+        if(!rollText) return;
+        
+        const result = rollDice(rollText);
+        if(!result) {
+          alert('Formato inválido. Use: 1d20, 2d6+3, etc');
+          return;
+        }
+        
+        const resultMsg = document.createElement('div');
+        resultMsg.className = 'chat-message master-message';
+        resultMsg.innerHTML = `<strong>🎲 Mestre:</strong> ${result.total}`;
+        chatMessages.appendChild(resultMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        masterRollInput.value = '';
+      });
+
+      masterRollInput.addEventListener('keypress', (e)=>{
+        if(e.key === 'Enter') masterRollBtn.click();
+      });
+
+      // Chat
+      chatSendBtn.addEventListener('click', ()=>{
+        const message = chatInput.value.trim();
+        if(!message) return;
+        
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'chat-message player-message';
+        msgDiv.innerHTML = `<strong>Você:</strong> ${message}`;
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        chatInput.value = '';
+      });
+
+      chatInput.addEventListener('keypress', (e)=>{
+        if(e.key === 'Enter') chatSendBtn.click();
+      });
+
+      // Chat Tabs (switch between channels)
+      chatTabs.forEach(tab => {
+        tab.addEventListener('click', ()=>{
+          chatTabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          chatMessages.innerHTML = '';
+        });
+      });
     })();
   </script>
 </body>
