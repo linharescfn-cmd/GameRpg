@@ -5,8 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>GameRpg — VTT / Editor</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="js/utils/idGenerator.js"></script>
+  <script src="js/contexts/auth.context.js"></script>
+  <script src="js/services/route-guard.service.js"></script>
 </head>
 <body>
+  <script>
+    (function(){
+      if(window.RouteGuard){
+        window.RouteGuard.requireAuth();
+      }
+    })();
+  </script>
   <!-- Toggle Button para Sidebar -->
   <button id="toggleBtn">☰</button>
 

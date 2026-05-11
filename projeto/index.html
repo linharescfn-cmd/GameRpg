@@ -3,20 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>GameRpg — Mestre do Game</title>
+  <title>GameRpg — MasterControl</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="js/utils/idGenerator.js"></script>
+  <script src="js/contexts/auth.context.js"></script>
+  <script src="js/contexts/campaign.context.js"></script>
+  <script src="js/services/route-guard.service.js"></script>
+  <script src="js/components/modals/modal.component.js"></script>
 </head>
 <body class="dark-theme">
+  <script>
+    (function(){
+      if(window.RouteGuard){
+        window.RouteGuard.requireRole('master');
+      }
+    })();
+  </script>
   <!-- Container Principal -->
   <div class="game-master-container">
     <!-- Card do Mestre -->
     <div class="game-master-card">
-      <h1 class="game-master-title">Mestre do Game</h1>
-      
+      <h1 class="game-master-title">MasterControl</h1>
+      <p id="masterUserLabel" class="master-user-label"></p>
+
       <!-- Botões de Ação -->
       <div class="button-group">
         <button id="loadNewGameBtn" class="btn btn-primary">Carregar Novo Jogo</button>
         <button id="searchSavedGameBtn" class="btn btn-secondary">Buscar Jogo Salvo</button>
+        <button id="logoutMasterBtn" class="btn btn-logout">Sair</button>
       </div>
     </div>
   </div>
@@ -33,12 +47,76 @@
       const loadNewGameBtn = document.getElementById('loadNewGameBtn');
       const searchSavedGameBtn = document.getElementById('searchSavedGameBtn');
       const jsonFileInput = document.getElementById('jsonFileInput');
+      const logoutMasterBtn = document.getElementById('logoutMasterBtn');
+      const masterUserLabel = document.getElementById('masterUserLabel');
+
+      const currentSession = window.AuthContext ? window.AuthContext.getSession() : null;
+      if (masterUserLabel && currentSession) {
+        masterUserLabel.textContent = `Mestre: ${currentSession.username} (${currentSession.userId})`;
+      }
 
       // =====================
       // Load New Game
       // =====================
       loadNewGameBtn.onclick = () => {
-        window.location.href = 'tool.html';
+        const content = document.createElement('div');
+        content.className = 'campaign-create-content';
+
+        const label = document.createElement('label');
+        label.setAttribute('for', 'campaignNameInput');
+        label.textContent = 'Nome da Campanha';
+
+        const input = document.createElement('input');
+        input.id = 'campaignNameInput';
+        input.type = 'text';
+        input.placeholder = 'Digite o nome da campanha';
+
+        const error = document.createElement('small');
+        error.className = 'field-error';
+
+        const createBtn = document.createElement('button');
+        createBtn.type = 'button';
+        createBtn.className = 'btn btn-primary';
+        createBtn.textContent = 'Criar Campanha';
+
+        content.appendChild(label);
+        content.appendChild(input);
+        content.appendChild(error);
+        content.appendChild(createBtn);
+
+        const modal = window.ModalComponent.createModal({
+          title: 'Nome da Campanha',
+          body: content,
+          closeOnBackdrop: false
+        });
+
+        createBtn.addEventListener('click', () => {
+          const session = window.AuthContext ? window.AuthContext.getSession() : null;
+          const result = window.CampaignContext.createCampaign(input.value, session);
+
+          if (!result.ok) {
+            error.textContent = result.message;
+            input.classList.add('input-error');
+            return;
+          }
+
+          input.classList.remove('input-error');
+          error.textContent = '';
+
+          const payload = {
+            id: result.campaign.id,
+            name: result.campaign.name,
+            state: result.campaign.state,
+            camera: { x: 0, y: 0 }
+          };
+
+          sessionStorage.setItem('loadedGameData', JSON.stringify(payload));
+          modal.close();
+          modal.destroy();
+          window.location.href = 'tool.html?source=loaded';
+        });
+
+        modal.open();
       };
 
       // =====================
@@ -46,6 +124,15 @@
       // =====================
       searchSavedGameBtn.onclick = () => {
         jsonFileInput.click();
+      };
+
+      if (logoutMasterBtn) {
+        logoutMasterBtn.onclick = () => {
+          if (window.AuthContext) {
+            window.AuthContext.logout();
+          }
+          window.location.href = 'auth.html';
+        };
       };
 
       // =====================

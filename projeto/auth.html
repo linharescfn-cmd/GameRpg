@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GameRpg - Login Temporario</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-theme">
+  <main class="auth-page">
+    <section class="auth-card">
+      <h1 class="auth-title">GameRpg</h1>
+      <p class="auth-subtitle">Acesso temporario para o VTT</p>
+
+      <div id="temporaryLoginRoot"></div>
+      <p id="authGlobalNotice" class="form-notice"></p>
+    </section>
+  </main>
+
+  <script src="js/utils/idGenerator.js"></script>
+  <script src="js/contexts/auth.context.js"></script>
+  <script src="js/services/route-guard.service.js"></script>
+  <script src="js/components/modals/modal.component.js"></script>
+  <script src="js/components/auth/auth-form.component.js"></script>
+  <script src="js/pages/auth.page.js"></script>
+</body>
+</html>

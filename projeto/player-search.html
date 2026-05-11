@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GameRpg - Buscar Campanha</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="player-theme">
+  <main class="player-search-page">
+    <header class="player-header">
+      <div>
+        <h1>Buscar Campanha</h1>
+        <p>Conectado como: <strong id="playerName">-</strong></p>
+      </div>
+      <button id="logoutPlayerBtn" class="btn btn-secondary" type="button">Sair</button>
+    </header>
+
+    <section class="player-search-panel">
+      <label for="campaignSearchInput">Input de pesquisa</label>
+      <input id="campaignSearchInput" type="text" placeholder="Buscar campanhas ativas pelo nome">
+    </section>
+
+    <section>
+      <div id="campaignList" class="campaign-list-grid"></div>
+      <p id="campaignEmptyState" class="muted">Nenhuma campanha ativa encontrada.</p>
+    </section>
+  </main>
+
+  <script src="js/storage.js"></script>
+  <script src="js/utils/idGenerator.js"></script>
+  <script src="js/contexts/auth.context.js"></script>
+  <script src="js/contexts/campaign.context.js"></script>
+  <script src="js/services/route-guard.service.js"></script>
+  <script src="js/pages/player-search.page.js"></script>
+</body>
+</html>
