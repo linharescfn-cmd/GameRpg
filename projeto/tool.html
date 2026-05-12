@@ -11,6 +11,13 @@
   <script src="js/components/modals/modal.component.js"></script>
   <script src="js/components/modals/create-token-modal.component.js"></script>
   <script src="js/components/tokens/token-name-label.component.js"></script>
+  <script src="js/components/campaign/campaign-info.component.js"></script>
+  <script src="js/services/campaign.service.js"></script>
+  <script src="js/hooks/useCampaignInfo.js"></script>
+  <script src="js/utils/jsonExporter.js"></script>
+  <script src="js/services/campaignExporter.service.js"></script>
+  <script src="js/hooks/useCampaignExport.js"></script>
+  <script src="js/components/modals/export-campaign-modal.component.js"></script>
   <script src="js/services/token.service.js"></script>
   <script src="js/contexts/tokenStats.context.js"></script>
   <script src="js/hooks/useTokenStats.js"></script>
@@ -49,6 +56,8 @@
       <button id="applyScale">Aplicar escala</button>
       <div id="scaleInfo" style="margin-top:8px;"></div>
     </div>
+
+    <button id="saveCampaignBtn" class="campaign-export-btn" type="button">Salvar Campanha</button>
 
     <hr>
 
@@ -213,6 +222,47 @@
   <script>
     // Chat e Roll Dados
     (function(){
+      window.CampaignRuntimeLog = window.CampaignRuntimeLog || (function(){
+        var chatHistory = [];
+        var rollHistory = [];
+
+        function cloneChatEntry(entry){
+          return {
+            channel: entry.channel || 'general',
+            author: entry.author || 'Usuário',
+            message: entry.message || '',
+            timestamp: entry.timestamp || new Date().toISOString()
+          };
+        }
+
+        function cloneRollEntry(entry){
+          return {
+            user: entry.user || 'Usuário',
+            expression: entry.expression || '',
+            diceType: entry.diceType || null,
+            result: typeof entry.result === 'number' ? entry.result : 0,
+            rolls: Array.isArray(entry.rolls) ? entry.rolls.slice() : [],
+            kind: entry.kind || 'player',
+            timestamp: entry.timestamp || new Date().toISOString()
+          };
+        }
+
+        return {
+          recordChat: function(entry){
+            chatHistory.push(cloneChatEntry(entry || {}));
+          },
+          recordRoll: function(entry){
+            rollHistory.push(cloneRollEntry(entry || {}));
+          },
+          getChatHistory: function(){
+            return chatHistory.slice();
+          },
+          getRollHistory: function(){
+            return rollHistory.slice();
+          }
+        };
+      })();
+
       const rollBtn = document.getElementById('rollBtn');
       const rollInput = document.getElementById('rollInput');
       const chatSendBtn = document.getElementById('chatSendBtn');
@@ -221,6 +271,19 @@
       const chatTabs = document.querySelectorAll('.chat-tab');
       const masterRollBtn = document.getElementById('masterRollBtn');
       const masterRollInput = document.getElementById('masterRollInput');
+
+      function getCurrentAuthor(){
+        var session = window.AuthContext && typeof window.AuthContext.getSession === 'function'
+          ? window.AuthContext.getSession()
+          : null;
+
+        return session && session.username ? session.username : 'Usuário';
+      }
+
+      function getCurrentChatChannel(){
+        var activeTab = document.querySelector('.chat-tab.active');
+        return activeTab && activeTab.dataset ? activeTab.dataset.tab || 'general' : 'general';
+      }
 
       if(!rollBtn || !chatSendBtn) return;
 
@@ -288,6 +351,18 @@
         resultMsg.innerHTML = `<strong>Rolou:</strong> ${rollText} = <span style="color:#60a5fa;">${result.total}</span>`;
         chatMessages.appendChild(resultMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        if (window.CampaignRuntimeLog && typeof window.CampaignRuntimeLog.recordRoll === 'function') {
+          var rollMatch = rollText.match(/\d+d(\d+)/i);
+          window.CampaignRuntimeLog.recordRoll({
+            kind: 'player',
+            user: getCurrentAuthor(),
+            expression: rollText,
+            diceType: rollMatch ? 'd' + rollMatch[1] : null,
+            result: result.total,
+            rolls: result.rolls,
+            timestamp: new Date().toISOString()
+          });
+        }
         
         rollInput.value = '';
       });
@@ -312,6 +387,18 @@
         resultMsg.innerHTML = `<strong>🎲 Mestre:</strong> ${result.total}`;
         chatMessages.appendChild(resultMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        if (window.CampaignRuntimeLog && typeof window.CampaignRuntimeLog.recordRoll === 'function') {
+          var masterRollMatch = rollText.match(/\d+d(\d+)/i);
+          window.CampaignRuntimeLog.recordRoll({
+            kind: 'master',
+            user: getCurrentAuthor(),
+            expression: rollText,
+            diceType: masterRollMatch ? 'd' + masterRollMatch[1] : null,
+            result: result.total,
+            rolls: result.rolls,
+            timestamp: new Date().toISOString()
+          });
+        }
         
         masterRollInput.value = '';
       });
@@ -330,6 +417,14 @@
         msgDiv.innerHTML = `<strong>Você:</strong> ${message}`;
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        if (window.CampaignRuntimeLog && typeof window.CampaignRuntimeLog.recordChat === 'function') {
+          window.CampaignRuntimeLog.recordChat({
+            channel: getCurrentChatChannel(),
+            author: getCurrentAuthor(),
+            message: message,
+            timestamp: new Date().toISOString()
+          });
+        }
         
         chatInput.value = '';
       });

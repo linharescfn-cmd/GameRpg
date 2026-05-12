@@ -317,6 +317,26 @@ a:hover{
   font-size:0.85rem;
 }
 
+.campaign-export-btn{
+  width:100%;
+  margin-top:10px;
+  padding:10px 12px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:700;
+  color:#effdfa;
+  background:linear-gradient(135deg, #14b8a6 0%, #0f766e 100%);
+  box-shadow:0 10px 22px rgba(15,118,110,0.28);
+  transition:transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.campaign-export-btn:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.04);
+  box-shadow:0 14px 28px rgba(15,118,110,0.34);
+}
+
 /* Drawer UI */
 .map-drawer-toggle,
 .drawer-toggle{
@@ -1521,16 +1541,22 @@ body.auth-theme{
 .reusable-modal{
   position:fixed;
   inset:0;
-  display:none;
+  display:flex;
   align-items:center;
   justify-content:center;
   z-index:4000;
   padding:16px;
   background:rgba(8, 12, 20, 0.7);
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity 0.2s ease, visibility 0.2s ease;
 }
 
 .reusable-modal.open{
-  display:flex;
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
 }
 
 .reusable-modal-dialog{
@@ -1541,6 +1567,12 @@ body.auth-theme{
   background:linear-gradient(180deg, #0f1728, #172038);
   color:#ecf3ff;
   box-shadow:0 18px 55px rgba(0,0,0,0.55);
+  transform:translateY(14px) scale(0.98);
+  transition:transform 0.2s ease;
+}
+
+.reusable-modal.open .reusable-modal-dialog{
+  transform:translateY(0) scale(1);
 }
 
 .reusable-modal-header,
@@ -1561,6 +1593,64 @@ body.auth-theme{
 
 .reusable-modal-footer{
   border-top:1px solid rgba(148,163,184,0.2);
+}
+
+.export-campaign-modal-root .reusable-modal-dialog{
+  max-width:min(92vw, 760px);
+}
+
+.export-campaign-modal-content{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.export-campaign-modal-text{
+  margin:0;
+  color:#d8e6ff;
+  line-height:1.5;
+}
+
+.export-campaign-modal-code{
+  width:100%;
+  min-height:280px;
+  box-sizing:border-box;
+  resize:vertical;
+  padding:14px;
+  border-radius:12px;
+  border:1px solid rgba(148,163,184,0.28);
+  background:#09101c;
+  color:#eaf2ff;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:0.88rem;
+  line-height:1.45;
+  outline:none;
+}
+
+.export-campaign-modal-code:focus{
+  border-color:#38bdf8;
+  box-shadow:0 0 0 3px rgba(56,189,248,0.14);
+}
+
+.export-campaign-modal-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.export-campaign-modal-actions .btn{
+  flex:1 1 160px;
+}
+
+.export-campaign-modal-feedback{
+  margin:0;
+  min-height:1.2em;
+  color:#86efac;
+  font-size:0.92rem;
+}
+
+.export-campaign-modal-feedback.is-error{
+  color:#fca5a5;
 }
 
 .role-choice-text{
@@ -1681,6 +1771,10 @@ body.player-theme{
   .auth-card,
   .reusable-modal-dialog{
     max-width:100%;
+  }
+
+  .export-campaign-modal-code{
+    min-height:220px;
   }
 
   .token-item{

@@ -113,6 +113,9 @@
         }
       })
     : null;
+  const campaignExportFlow = window.UseCampaignExport && typeof window.UseCampaignExport.create === 'function'
+    ? window.UseCampaignExport.create()
+    : null;
 
   // =====================
   // LOAD SAVED GAME DATA
@@ -826,6 +829,15 @@
     };
   }
 
+  const saveCampaignBtn = document.getElementById('saveCampaignBtn');
+  if (saveCampaignBtn) {
+    saveCampaignBtn.onclick = () => {
+      if (campaignExportFlow && typeof campaignExportFlow.open === 'function') {
+        campaignExportFlow.open();
+      }
+    };
+  }
+
   function createTokenFromUpload(file, targetGroup) {
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -1502,12 +1514,22 @@
       if (!editorEl) return;
       if (!campaign) editorEl.textContent = "Nenhuma campanha carregada.";
       else editorEl.textContent = JSON.stringify(campaign, null, 2);
+
+      if (campaign && window.CampaignService && typeof window.CampaignService.setCampaignInfo === 'function') {
+        window.CampaignService.setCampaignInfo({
+          id: campaign.id || null,
+          name: campaign.name || null
+        });
+      }
     },
     getState() {
       return state;
     },
     getCamera() {
       return camera;
+    },
+    getZoom() {
+      return zoom;
     },
     saveState() {
       return {
