@@ -518,6 +518,42 @@ a:hover{
   gap:4px;
 }
 
+/* Campaign Info Panel */
+.campaign-info-panel{
+  padding:8px 12px;
+  border-radius:10px;
+  background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  color:#dbeafe;
+  font-size:0.86rem;
+  margin-bottom:8px;
+  position:sticky;
+  top:8px;
+  z-index:20;
+}
+.campaign-info-title,
+.campaign-info-idtitle{
+  color:#9fb7e6;
+  font-weight:700;
+  font-size:0.78rem;
+}
+.campaign-info-name{
+  color:#fff;
+  font-weight:600;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.campaign-info-id{
+  color:#cfe6ff;
+  font-weight:600;
+  font-size:0.82rem;
+}
+
+@media (max-width:640px){
+  .campaign-info-panel{ padding:8px; font-size:0.82rem; }
+  .campaign-info-name{ max-width:140px; }
+}
+
 .token-item button{
   width:28px;
   height:28px;

@@ -173,6 +173,16 @@
           });
         }
 
+        // Persistir informação da campanha (nome/id) para painel e futuras cargas
+        try {
+          if (window.CampaignService && typeof window.CampaignService.setCampaignInfo === 'function') {
+            window.CampaignService.setCampaignInfo({ id: gameData.id || null, name: gameData.name || null });
+          } else {
+            // fallback: gravar direto em localStorage
+            try { localStorage.setItem('gamerpg_campaign_info', JSON.stringify({ id: gameData.id || null, name: gameData.name || null })); } catch(e){}
+          }
+        } catch (e) {}
+
         // Limpar sessionStorage
         sessionStorage.removeItem('loadedGameData');
       } catch (err) {
@@ -1508,6 +1518,38 @@
   };
 
   window.VTT = VTT;
+
+  // Inicializar painéis de informação da campanha (esquerda/direita)
+  (function(){
+    try {
+      var leftHeader = document.querySelector('#sidebar .sidebar-header');
+      var rightHeader = document.querySelector('#rightToolbar .rt-header');
+
+      if (window.CampaignInfoPanel && typeof window.CampaignInfoPanel.createPanel === 'function'){
+        var leftPanel = window.CampaignInfoPanel.createPanel();
+        var rightPanel = window.CampaignInfoPanel.createPanel();
+
+        if (leftHeader && leftHeader.parentNode) {
+          leftHeader.parentNode.insertBefore(leftPanel.el, leftHeader.nextSibling);
+        }
+
+        if (rightHeader && rightHeader.parentNode) {
+          rightHeader.parentNode.insertBefore(rightPanel.el, rightHeader.nextSibling);
+        }
+
+        var updateFn = function(info){ leftPanel.set(info); rightPanel.set(info); };
+
+        if (window.CampaignService && typeof window.CampaignService.subscribe === 'function'){
+          window.CampaignService.subscribe(updateFn);
+        } else {
+          try {
+            var stored = JSON.parse(localStorage.getItem('gamerpg_campaign_info'));
+            if (stored) updateFn(stored);
+          } catch(_){}
+        }
+      }
+    } catch (e) {}
+  })();
 
   // =====================
   // INITIALIZATION
