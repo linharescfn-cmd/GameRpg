@@ -1,6 +1,7 @@
 // token.service.js - normalizacao, estatisticas e persistencia dos tokens
 (function(){
   var STORAGE_KEY = 'gamerpg_token_stats_state';
+  var NAME_STORAGE_KEY = 'gamerpg_token_names_state';
 
   function safeParse(raw, fallback){
     try {
@@ -17,6 +18,19 @@
 
   function writeStore(data){
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function readNameStore(){
+    var data = safeParse(localStorage.getItem(NAME_STORAGE_KEY), {});
+    return data && typeof data === 'object' ? data : {};
+  }
+
+  function writeNameStore(data){
+    localStorage.setItem(NAME_STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function normalizeTokenName(value){
+    return String(value == null ? '' : value).trim().slice(0, 20);
   }
 
   function clampMin(value, minValue){
@@ -93,10 +107,11 @@
   function createToken(config){
     var tokenConfig = config && typeof config === 'object' ? config : {};
     var tokenType = tokenConfig.type || 'player';
+    var finalName = normalizeTokenName(tokenConfig.name) || 'Token';
 
     var token = normalizeToken({
       id: tokenConfig.id || generateTokenId(),
-      name: tokenConfig.name || 'Token',
+      name: finalName,
       type: tokenType,
       src: tokenConfig.src || tokenConfig.imageUrl || '',
       imageObj: tokenConfig.imageObj || null,
@@ -125,6 +140,25 @@
     var store = readStore();
     store[normalized.id] = normalized.stats;
     writeStore(store);
+
+    var nameStore = readNameStore();
+    nameStore[normalized.id] = {
+      name: normalizeTokenName(normalized.name),
+      type: normalized.type,
+      imageUrl: normalized.src || normalized.imageUrl || '',
+      mapId: normalized.mapId || null,
+      x: typeof normalized.x === 'number' ? normalized.x : null,
+      y: typeof normalized.y === 'number' ? normalized.y : null,
+      size: typeof normalized.size === 'number' ? normalized.size : null,
+      borderColor: normalized.borderColor || null,
+      borderWidth: typeof normalized.borderWidth === 'number' ? normalized.borderWidth : null,
+      visible: normalized.visible !== false,
+      locked: !!normalized.locked,
+      metadata: normalized.metadata || null,
+      updatedAt: Date.now()
+    };
+    writeNameStore(nameStore);
+
     return normalized;
   }
 
@@ -140,6 +174,11 @@
       normalized = syncMetadata(normalized);
     } else {
       persistToken(normalized);
+    }
+
+    var nameStore = readNameStore();
+    if (!String(normalized.name || '').trim() && nameStore[normalized.id] && nameStore[normalized.id].name) {
+      normalized.name = normalizeTokenName(nameStore[normalized.id].name) || normalized.name;
     }
 
     return normalized;
@@ -165,6 +204,23 @@
       delete store[tokenId];
       writeStore(store);
     }
+
+    var nameStore = readNameStore();
+    if (nameStore[tokenId]) {
+      delete nameStore[tokenId];
+      writeNameStore(nameStore);
+    }
+  }
+
+  function updateTokenName(token, name){
+    var normalized = normalizeToken(token);
+    if (!normalized) {
+      return null;
+    }
+
+    normalized.name = normalizeTokenName(name) || normalized.name;
+    persistToken(normalized);
+    return normalized;
   }
 
   function updateTokenStats(token, patch){
@@ -243,6 +299,10 @@
     return readStore();
   }
 
+  function getAllStoredTokenNames(){
+    return readNameStore();
+  }
+
   window.TokenService = {
     createToken: createToken,
     normalizeToken: normalizeToken,
@@ -250,6 +310,7 @@
     hydrateTokens: hydrateTokens,
     persistToken: persistToken,
     removeToken: removeToken,
+    updateTokenName: updateTokenName,
     updateTokenStats: updateTokenStats,
     setLinkedPlayer: setLinkedPlayer,
     changeHp: changeHp,
@@ -259,6 +320,8 @@
     setDistance: setDistance,
     getTokenStats: getTokenStats,
     getAllStoredStats: getAllStoredStats,
+    getAllStoredTokenNames: getAllStoredTokenNames,
+    normalizeTokenName: normalizeTokenName,
     generateTokenId: generateTokenId
   };
 })();

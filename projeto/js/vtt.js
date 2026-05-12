@@ -100,6 +100,19 @@
   let enemyTokenDrawerOpen = false;
   let toolsDrawerOpen = false;
   let fogToolMode = null;
+  const tokenCreationFlow = window.UseTokenCreation && typeof window.UseTokenCreation.create === 'function'
+    ? window.UseTokenCreation.create({
+        onRequestFileSelection: function(type){
+          if (type === 'tokens' && tokenImageUpload) {
+            tokenImageUpload.click();
+          }
+
+          if (type === 'enemyTokens' && enemyTokenImageUpload) {
+            enemyTokenImageUpload.click();
+          }
+        }
+      })
+    : null;
 
   // =====================
   // LOAD SAVED GAME DATA
@@ -583,10 +596,27 @@
       const tokenItem = document.createElement("div");
       tokenItem.className = "token-item";
 
+      const tokenMain = document.createElement("div");
+      tokenMain.className = "token-main";
+
       const iconImg = document.createElement("img");
       iconImg.className = "token-icon";
       iconImg.src = token.src;
       iconImg.style.borderColor = token.borderColor || "#3b82f6";
+
+      const tokenDetails = document.createElement("div");
+      tokenDetails.className = "token-details";
+
+      const tokenName = window.TokenNameLabel && typeof window.TokenNameLabel.create === 'function'
+        ? window.TokenNameLabel.create(token)
+        : document.createElement("div");
+      if (!tokenName.textContent) {
+        tokenName.textContent = token.name || "Token";
+      }
+
+      tokenDetails.appendChild(tokenName);
+      tokenMain.appendChild(iconImg);
+      tokenMain.appendChild(tokenDetails);
 
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "token-actions";
@@ -617,7 +647,7 @@
       actionsDiv.appendChild(minusBtn);
       actionsDiv.appendChild(plusBtn);
       actionsDiv.appendChild(deleteBtn);
-      tokenItem.appendChild(iconImg);
+      tokenItem.appendChild(tokenMain);
       tokenItem.appendChild(actionsDiv);
       tokenList.appendChild(tokenItem);
     });
@@ -630,11 +660,28 @@
       const tokenItem = document.createElement("div");
       tokenItem.className = "token-item";
 
+      const tokenMain = document.createElement("div");
+      tokenMain.className = "token-main";
+
       const iconImg = document.createElement("img");
       iconImg.className = "token-icon";
       iconImg.src = token.src;
       iconImg.style.borderColor = "#ef4444";
       iconImg.style.borderWidth = "4px";
+
+      const tokenDetails = document.createElement("div");
+      tokenDetails.className = "token-details";
+
+      const tokenName = window.TokenNameLabel && typeof window.TokenNameLabel.create === 'function'
+        ? window.TokenNameLabel.create(token)
+        : document.createElement("div");
+      if (!tokenName.textContent) {
+        tokenName.textContent = token.name || "Token";
+      }
+
+      tokenDetails.appendChild(tokenName);
+      tokenMain.appendChild(iconImg);
+      tokenMain.appendChild(tokenDetails);
 
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "token-actions";
@@ -665,7 +712,7 @@
       actionsDiv.appendChild(minusBtn);
       actionsDiv.appendChild(plusBtn);
       actionsDiv.appendChild(deleteBtn);
-      tokenItem.appendChild(iconImg);
+      tokenItem.appendChild(tokenMain);
       tokenItem.appendChild(actionsDiv);
       enemyTokenList.appendChild(tokenItem);
     });
@@ -778,6 +825,13 @@
         const centerScreen = { x: width / 2, y: height / 2 };
         const centerWorld = screenToWorld(centerScreen);
         const tokenType = targetGroup === "enemyTokens" ? "enemy" : "player";
+        const tokenName = tokenCreationFlow ? tokenCreationFlow.consume(targetGroup) : pendingTokenName;
+
+        if (!tokenName) {
+          alert('Defina o nome do token antes de selecionar a imagem.');
+          return;
+        }
+
         const token = window.TokenService && typeof window.TokenService.createToken === 'function'
           ? window.TokenService.createToken({
               id: generateTokenId(),
@@ -785,7 +839,7 @@
               x: centerWorld.x,
               y: centerWorld.y,
               size: TOKEN_DEFAULT_SIZE,
-              name: file.name.replace(/\.[^\/\.]+$/, ""),
+              name: tokenName,
               imageObj: img,
               borderColor: tokenType === "enemy" ? "#ef4444" : getNextTokenBorderColor(),
               borderWidth: tokenType === "enemy" ? 4 : 2,
@@ -797,7 +851,7 @@
               x: centerWorld.x,
               y: centerWorld.y,
               size: TOKEN_DEFAULT_SIZE,
-              name: file.name.replace(/\.[^\/\.]+$/, ""),
+              name: tokenName,
               imageObj: img,
               borderColor: tokenType === "enemy" ? "#ef4444" : getNextTokenBorderColor(),
               borderWidth: tokenType === "enemy" ? 4 : 2,
@@ -824,7 +878,11 @@
 
   if (addTokenBtn && tokenImageUpload) {
     addTokenBtn.onclick = () => {
-      tokenImageUpload.click();
+      if (tokenCreationFlow) {
+        tokenCreationFlow.request("tokens");
+      } else {
+        alert('Sistema de criação de token indisponível.');
+      }
     };
 
     tokenImageUpload.onchange = (e) => {
@@ -837,7 +895,11 @@
 
   if (addEnemyTokenBtn && enemyTokenImageUpload) {
     addEnemyTokenBtn.onclick = () => {
-      enemyTokenImageUpload.click();
+      if (tokenCreationFlow) {
+        tokenCreationFlow.request("enemyTokens");
+      } else {
+        alert('Sistema de criação de token indisponível.');
+      }
     };
 
     enemyTokenImageUpload.onchange = (e) => {

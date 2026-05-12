@@ -469,10 +469,19 @@ a:hover{
   display:flex;
   align-items:center;
   justify-content:space-between;
+  gap:10px;
   background:#1f2937;
   padding:8px;
   border-radius:4px;
   border:1px solid #10b981;
+}
+
+.token-item .token-main{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+  flex:1 1 auto;
 }
 
 .token-item .token-icon{
@@ -480,8 +489,27 @@ a:hover{
   height:40px;
   border-radius:50%;
   object-fit:cover;
-  margin-right:8px;
   border:2px solid #10b981;
+  flex:0 0 auto;
+}
+
+.token-item .token-details{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  gap:2px;
+}
+
+.token-name-label{
+  display:block;
+  font-size:0.9rem;
+  font-weight:600;
+  line-height:1.2;
+  color:#fff;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:180px;
 }
 
 .token-item .token-actions{
@@ -539,6 +567,58 @@ a:hover{
 
 #enemyTokenList .token-item .btn-delete:hover{
   background:#dc2626;
+}
+
+.create-token-modal-content{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.create-token-modal-label{
+  color:#d2e1ff;
+  font-weight:600;
+}
+
+.create-token-modal-input{
+  width:100%;
+  box-sizing:border-box;
+  padding:12px 14px;
+  border-radius:10px;
+  border:1px solid rgba(148,163,184,0.35);
+  background:#0b1220;
+  color:#fff;
+  outline:none;
+}
+
+.create-token-modal-input:focus{
+  border-color:#3b82f6;
+  box-shadow:0 0 0 3px rgba(59,130,246,0.18);
+}
+
+.create-token-modal-input.input-error{
+  border-color:#f87171;
+  box-shadow:0 0 0 3px rgba(248,113,113,0.15);
+}
+
+.create-token-modal-help{
+  margin:0;
+  color:#9db4d7;
+  font-size:0.85rem;
+}
+
+.create-token-modal-error{
+  margin:0;
+  min-height:1.2em;
+  color:#fca5a5;
+  font-size:0.85rem;
+}
+
+.reusable-modal-footer{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  flex-wrap:wrap;
 }
 
 /* Tools Drawer - Roxo */
@@ -1565,6 +1645,19 @@ body.player-theme{
   .auth-card,
   .reusable-modal-dialog{
     max-width:100%;
+  }
+
+  .token-item{
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+
+  .token-name-label{
+    max-width:120px;
+  }
+
+  .token-item .token-actions{
+    margin-left:auto;
   }
 }
 
