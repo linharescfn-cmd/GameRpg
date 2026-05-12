@@ -4,7 +4,8 @@
   // DOM REFERENCES
   // =====================
   const sidebar = document.getElementById("sidebar");
-  const toggleBtn = document.getElementById("toggleBtn");
+  const toggleBtn = document.getElementById("sidebarOpen") || document.getElementById("toggleBtn");
+  const revealBtn = document.getElementById("sidebarReveal");
   const scaleInput = document.getElementById("cellMeters");
   const scaleBtn = document.getElementById("applyScale");
   const scaleInfo = document.getElementById("scaleInfo");
@@ -112,6 +113,8 @@
         // Aplicar state salvo
         if (gameData.state) {
           Object.assign(state, gameData.state);
+          state.tokens = normalizeTokenCollection(state.tokens);
+          state.enemyTokens = normalizeTokenCollection(state.enemyTokens);
           state.fog = Object.assign({
             active: false,
             brushSize: 40,
@@ -168,12 +171,45 @@
   // =====================
   // SIDEBAR TOGGLE
   // =====================
-  toggleBtn.onclick = () => {
-    state.ui.sidebarOpen = !state.ui.sidebarOpen;
-    sidebar.style.transform = state.ui.sidebarOpen
-      ? "translateX(0)"
-      : "translateX(-100%)";
-  };
+  function syncSidebarToggle() {
+    if (!sidebar) return;
+
+    sidebar.classList.toggle("hidden", !state.ui.sidebarOpen);
+
+    if (toggleBtn) {
+      toggleBtn.textContent = state.ui.sidebarOpen ? "✕" : "☰";
+      toggleBtn.setAttribute("aria-pressed", String(state.ui.sidebarOpen));
+      toggleBtn.setAttribute(
+        "aria-label",
+        state.ui.sidebarOpen ? "Ocultar ferramentas" : "Abrir ferramentas"
+      );
+    }
+
+    if (revealBtn) {
+      revealBtn.classList.toggle("hidden", state.ui.sidebarOpen);
+      revealBtn.setAttribute("aria-pressed", String(!state.ui.sidebarOpen));
+      revealBtn.setAttribute(
+        "aria-label",
+        state.ui.sidebarOpen ? "Abrir ferramentas" : "Ocultar ferramentas"
+      );
+    }
+  }
+
+  if (toggleBtn) {
+    toggleBtn.onclick = () => {
+      state.ui.sidebarOpen = !state.ui.sidebarOpen;
+      syncSidebarToggle();
+    };
+  }
+
+  if (revealBtn) {
+    revealBtn.onclick = () => {
+      state.ui.sidebarOpen = true;
+      syncSidebarToggle();
+    };
+  }
+
+  syncSidebarToggle();
 
   // =====================
   // SCALE CONTROLS
@@ -415,6 +451,113 @@
     return color;
   }
 
+  function getAllTokens() {
+    return state.tokens.concat(state.enemyTokens);
+  }
+
+  function getTokenGroupById(tokenId) {
+    if (state.tokens.some((token) => token.id === tokenId)) {
+      return 'tokens';
+    }
+
+    if (state.enemyTokens.some((token) => token.id === tokenId)) {
+      return 'enemyTokens';
+    }
+
+    return null;
+  }
+
+  function replaceTokenInState(updatedToken) {
+    if (!updatedToken) return null;
+
+    const group = getTokenGroupById(updatedToken.id) || (updatedToken.type === 'enemy' ? 'enemyTokens' : 'tokens');
+    const targetList = state[group];
+    const tokenIndex = targetList.findIndex((token) => token.id === updatedToken.id);
+
+    if (tokenIndex >= 0) {
+      targetList[tokenIndex] = updatedToken;
+    }
+
+    return updatedToken;
+  }
+
+  function removeTokenFromState(tokenId) {
+    state.tokens = state.tokens.filter((token) => token.id !== tokenId);
+    state.enemyTokens = state.enemyTokens.filter((token) => token.id !== tokenId);
+
+    if (window.TokenService && typeof window.TokenService.removeToken === 'function') {
+      window.TokenService.removeToken(tokenId);
+    }
+  }
+
+  function normalizeTokenCollection(tokens) {
+    if (!window.TokenService || typeof window.TokenService.hydrateTokens !== 'function') {
+      return Array.isArray(tokens) ? tokens : [];
+    }
+
+    return window.TokenService.hydrateTokens(tokens || []);
+  }
+
+  function openTokenDrawerForToken(token) {
+    if (!window.TokenInfoDrawer || typeof window.TokenInfoDrawer.open !== 'function') {
+      return;
+    }
+
+    window.TokenInfoDrawer.open(token, {
+      onPatch: function(currentToken, patch) {
+        const tokenGroup = getTokenGroupById(currentToken.id) || (currentToken.type === 'enemy' ? 'enemyTokens' : 'tokens');
+        const existingToken = state[tokenGroup].find((item) => item.id === currentToken.id) || currentToken;
+        let updatedToken = existingToken;
+
+        if (window.TokenService && typeof window.TokenService.updateTokenStats === 'function') {
+          updatedToken = window.TokenService.updateTokenStats(existingToken, patch) || existingToken;
+        } else {
+          updatedToken = {
+            ...existingToken,
+            stats: {
+              ...(existingToken.stats || {}),
+              ...patch,
+            },
+            metadata: {
+              ...(existingToken.metadata || {}),
+              ...patch,
+            }
+          };
+        }
+
+        replaceTokenInState(updatedToken);
+        draw();
+        return updatedToken;
+      },
+      onClose: function() {
+        draw();
+      }
+    });
+  }
+
+  function projectTokenOverlay(token) {
+    const center = worldToScreen({ x: token.x, y: token.y });
+    const size = token.size * zoom;
+    const overlayWidth = Math.max(120, Math.min(240, size * 1.25));
+    const overlayHeight = 34;
+
+    return {
+      left: center.x - overlayWidth / 2,
+      top: Math.max(0, center.y - size / 2 - overlayHeight - 8),
+      width: overlayWidth,
+      height: overlayHeight
+    };
+  }
+
+  function configureTokenUi() {
+    if (window.TokenStatsBar && typeof window.TokenStatsBar.configure === 'function') {
+      window.TokenStatsBar.configure({
+        projectToken: projectTokenOverlay,
+        onOpenToken: openTokenDrawerForToken
+      });
+    }
+  }
+
   function getTokenAtPoint(screenPoint) {
     const groups = [
       { name: "enemyTokens", tokens: state.enemyTokens },
@@ -466,7 +609,7 @@
       deleteBtn.className = "btn-delete";
       deleteBtn.textContent = "x";
       deleteBtn.onclick = () => {
-        state.tokens = state.tokens.filter((t) => t.id !== token.id);
+        removeTokenFromState(token.id);
         updateTokenList();
         draw();
       };
@@ -514,7 +657,7 @@
       deleteBtn.className = "btn-delete";
       deleteBtn.textContent = "x";
       deleteBtn.onclick = () => {
-        state.enemyTokens = state.enemyTokens.filter((t) => t.id !== token.id);
+        removeTokenFromState(token.id);
         updateEnemyTokenList();
         draw();
       };
@@ -634,17 +777,40 @@
       img.onload = () => {
         const centerScreen = { x: width / 2, y: height / 2 };
         const centerWorld = screenToWorld(centerScreen);
-        const token = {
-          id: generateTokenId(),
-          src: ev.target.result,
-          x: centerWorld.x,
-          y: centerWorld.y,
-          size: TOKEN_DEFAULT_SIZE,
-          name: file.name.replace(/\.[^\/\.]+$/, ""),
-          imageObj: img,
-          borderColor: targetGroup === "enemyTokens" ? "#ef4444" : getNextTokenBorderColor(),
-          borderWidth: targetGroup === "enemyTokens" ? 4 : 2
-        };
+        const tokenType = targetGroup === "enemyTokens" ? "enemy" : "player";
+        const token = window.TokenService && typeof window.TokenService.createToken === 'function'
+          ? window.TokenService.createToken({
+              id: generateTokenId(),
+              src: ev.target.result,
+              x: centerWorld.x,
+              y: centerWorld.y,
+              size: TOKEN_DEFAULT_SIZE,
+              name: file.name.replace(/\.[^\/\.]+$/, ""),
+              imageObj: img,
+              borderColor: tokenType === "enemy" ? "#ef4444" : getNextTokenBorderColor(),
+              borderWidth: tokenType === "enemy" ? 4 : 2,
+              type: tokenType
+            })
+          : {
+              id: generateTokenId(),
+              src: ev.target.result,
+              x: centerWorld.x,
+              y: centerWorld.y,
+              size: TOKEN_DEFAULT_SIZE,
+              name: file.name.replace(/\.[^\/\.]+$/, ""),
+              imageObj: img,
+              borderColor: tokenType === "enemy" ? "#ef4444" : getNextTokenBorderColor(),
+              borderWidth: tokenType === "enemy" ? 4 : 2,
+              type: tokenType,
+              stats: {
+                hp: 0,
+                maxHp: 0,
+                ac: 0,
+                distance: 0,
+                linkedPlayerId: null
+              }
+            };
+        token.imageObj = img;
         state[targetGroup].push(token);
         setTokenDrawerOpen(state.tokens.length > 0 || tokenDrawerOpen);
         setEnemyTokenDrawerOpen(state.enemyTokens.length > 0 || enemyTokenDrawerOpen);
@@ -1111,6 +1277,9 @@
     drawFog();
     drawTokens();
     drawMovementPath();
+    if (window.TokenStatsBar && typeof window.TokenStatsBar.render === 'function') {
+      window.TokenStatsBar.render(getAllTokens());
+    }
     
     // Atualizar réguas
     drawTopRuler();
@@ -1251,6 +1420,7 @@
   // =====================
   updateTokenList();
   updateEnemyTokenList();
+  configureTokenUi();
 
   // =====================
   // VTT PUBLIC API

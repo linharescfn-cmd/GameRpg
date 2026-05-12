@@ -1,6 +1,7 @@
 // auth.context.js - login temporario com persistencia em localStorage
 (function(){
   var AUTH_SESSION_KEY = 'gamerpg_auth_session';
+  var CONNECTED_USERS_KEY = 'gamerpg_connected_users';
   var listeners = [];
 
   function safeParse(raw, fallback){
@@ -21,6 +22,46 @@
     } else {
       localStorage.removeItem(AUTH_SESSION_KEY);
     }
+  }
+
+  function readConnectedUsers(){
+    var users = safeParse(localStorage.getItem(CONNECTED_USERS_KEY), []);
+    return Array.isArray(users) ? users : [];
+  }
+
+  function writeConnectedUsers(users){
+    localStorage.setItem(CONNECTED_USERS_KEY, JSON.stringify(users));
+  }
+
+  function upsertConnectedUser(session){
+    if(!session || !session.userId || !session.username){
+      return;
+    }
+
+    var users = readConnectedUsers().filter(function(user){
+      return user && user.userId !== session.userId;
+    });
+
+    users.unshift({
+      userId: session.userId,
+      username: session.username,
+      role: session.role || null,
+      lastSeen: Date.now()
+    });
+
+    writeConnectedUsers(users);
+  }
+
+  function removeConnectedUser(userId){
+    if(!userId){
+      return;
+    }
+
+    var users = readConnectedUsers().filter(function(user){
+      return user && user.userId !== userId;
+    });
+
+    writeConnectedUsers(users);
   }
 
   function emit(){
@@ -63,6 +104,7 @@
     };
 
     writeSession(user);
+    upsertConnectedUser(user);
     emit();
 
     return { ok: true, user: user };
@@ -80,11 +122,16 @@
 
     session.role = role;
     writeSession(session);
+    upsertConnectedUser(session);
     emit();
     return { ok: true, session: session };
   }
 
   function logout(){
+    var session = readSession();
+    if(session && session.userId){
+      removeConnectedUser(session.userId);
+    }
     writeSession(null);
     emit();
   }
@@ -100,6 +147,21 @@
     };
   }
 
+  function getConnectedUsers(){
+    return readConnectedUsers();
+  }
+
+  window.addEventListener('storage', function(event){
+    if(event.key === AUTH_SESSION_KEY || event.key === CONNECTED_USERS_KEY){
+      emit();
+    }
+  });
+
+  var initialSession = readSession();
+  if(initialSession){
+    upsertConnectedUser(initialSession);
+  }
+
   window.AuthContext = {
     validateUsername: validateUsername,
     loginTemporary: loginTemporary,
@@ -107,6 +169,7 @@
     logout: logout,
     isAuthenticated: isAuthenticated,
     getSession: readSession,
-    subscribe: subscribe
+    subscribe: subscribe,
+    getConnectedUsers: getConnectedUsers
   };
 })();

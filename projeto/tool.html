@@ -8,6 +8,11 @@
   <script src="js/utils/idGenerator.js"></script>
   <script src="js/contexts/auth.context.js"></script>
   <script src="js/services/route-guard.service.js"></script>
+  <script src="js/services/token.service.js"></script>
+  <script src="js/contexts/tokenStats.context.js"></script>
+  <script src="js/hooks/useTokenStats.js"></script>
+  <script src="js/components/tokens/token-stats-bar.component.js"></script>
+  <script src="js/components/tokens/token-info-drawer.component.js"></script>
 </head>
 <body>
   <script>
@@ -17,13 +22,11 @@
       }
     })();
   </script>
-  <!-- Toggle interno para Sidebar (substitui toggle antigo) -->
-
   <!-- Sidebar com Ferramentas -->
   <div id="sidebar">
-    <div class="lt-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
-      <h3 style="margin:0">Ferramentas</h3>
-      <button id="leftToolbarToggle" class="lt-toggle" aria-pressed="false">✕</button>
+    <div class="sidebar-header">
+      <h3>Ferramentas</h3>
+      <button id="sidebarOpen" class="sb-open" aria-pressed="true" aria-label="Ocultar ferramentas">✕</button>
     </div>
     <button id="toggleRightToolbarBtn" class="btn-secondary" style="margin-bottom:8px;">Mostrar/Ocultar Barra Direita</button>
 
@@ -96,6 +99,9 @@
 
   <!-- Grid Scale Control removed: zoom agora é por scroll e pinça -->
 
+  <!-- Botão para reabrir a sidebar quando estiver ocultada -->
+  <button id="sidebarReveal" class="sidebar-reveal hidden" aria-pressed="false" aria-label="Abrir ferramentas">☰</button>
+
   <!-- Barra de Ferramentas Direita -->
   <div id="rightToolbar" class="right-toolbar collapsed" aria-hidden="true">
     <div class="rt-header">
@@ -129,8 +135,6 @@
 
   <!-- Botão flutuante para abrir a barra quando estiver ocultada -->
   <button id="rightToolbarOpen" class="rt-open" aria-hidden="false" aria-label="Abrir barra de ferramentas">⚙</button>
-  <!-- Botão flutuante para abrir a barra esquerda quando estiver ocultada -->
-  <button id="leftToolbarOpen" class="lt-open" aria-hidden="false" aria-label="Abrir barra esquerda">☰</button>
   <!-- Rulers Container -->
   <div class="rulers-container">
     <!-- Top Ruler (Colunas A, B, C, etc) -->
@@ -193,39 +197,6 @@
         openBtn.classList.add('hidden');
       }
     })();
-  
-      // Toggle da barra esquerda (novo comportamento espelhado)
-      (function(){
-        const leftSidebar = document.getElementById('sidebar');
-        const leftOpenBtn = document.getElementById('leftToolbarOpen');
-        const leftToggleBtn = document.getElementById('leftToolbarToggle');
-
-        if(!leftSidebar || !leftOpenBtn || !leftToggleBtn) return;
-
-        function openLeft(){
-          leftSidebar.classList.remove('hidden');
-          leftSidebar.setAttribute('aria-hidden','false');
-          leftOpenBtn.classList.add('hidden');
-          leftToggleBtn.setAttribute('aria-pressed','false');
-        }
-
-        function closeLeft(){
-          leftSidebar.classList.add('hidden');
-          leftSidebar.setAttribute('aria-hidden','true');
-          leftOpenBtn.classList.remove('hidden');
-          leftToggleBtn.setAttribute('aria-pressed','true');
-        }
-
-        leftOpenBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openLeft(); });
-        leftToggleBtn.addEventListener('click', ()=>{ closeLeft(); });
-
-        // Inicialmente, mostrar botão flutuante se a sidebar estiver ocultada
-        if(leftSidebar.classList.contains('hidden')){
-          leftOpenBtn.classList.remove('hidden');
-        } else {
-          leftOpenBtn.classList.add('hidden');
-        }
-      })();
   </script>
   <script>
     (async function(){
