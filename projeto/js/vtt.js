@@ -100,6 +100,22 @@
   let enemyTokenDrawerOpen = false;
   let toolsDrawerOpen = false;
   let fogToolMode = null;
+  const tokenCreationFlow = window.UseTokenCreation && typeof window.UseTokenCreation.create === 'function'
+    ? window.UseTokenCreation.create({
+        onRequestFileSelection: function(type){
+          if (type === 'tokens' && tokenImageUpload) {
+            tokenImageUpload.click();
+          }
+
+          if (type === 'enemyTokens' && enemyTokenImageUpload) {
+            enemyTokenImageUpload.click();
+          }
+        }
+      })
+    : null;
+  const campaignExportFlow = window.UseCampaignExport && typeof window.UseCampaignExport.create === 'function'
+    ? window.UseCampaignExport.create()
+    : null;
 
   // =====================
   // LOAD SAVED GAME DATA
@@ -159,6 +175,16 @@
             };
           });
         }
+
+        // Persistir informação da campanha (nome/id) para painel e futuras cargas
+        try {
+          if (window.CampaignService && typeof window.CampaignService.setCampaignInfo === 'function') {
+            window.CampaignService.setCampaignInfo({ id: gameData.id || null, name: gameData.name || null });
+          } else {
+            // fallback: gravar direto em localStorage
+            try { localStorage.setItem('gamerpg_campaign_info', JSON.stringify({ id: gameData.id || null, name: gameData.name || null })); } catch(e){}
+          }
+        } catch (e) {}
 
         // Limpar sessionStorage
         sessionStorage.removeItem('loadedGameData');
@@ -583,10 +609,27 @@
       const tokenItem = document.createElement("div");
       tokenItem.className = "token-item";
 
+      const tokenMain = document.createElement("div");
+      tokenMain.className = "token-main";
+
       const iconImg = document.createElement("img");
       iconImg.className = "token-icon";
       iconImg.src = token.src;
       iconImg.style.borderColor = token.borderColor || "#3b82f6";
+
+      const tokenDetails = document.createElement("div");
+      tokenDetails.className = "token-details";
+
+      const tokenName = window.TokenNameLabel && typeof window.TokenNameLabel.create === 'function'
+        ? window.TokenNameLabel.create(token)
+        : document.createElement("div");
+      if (!tokenName.textContent) {
+        tokenName.textContent = token.name || "Token";
+      }
+
+      tokenDetails.appendChild(tokenName);
+      tokenMain.appendChild(iconImg);
+      tokenMain.appendChild(tokenDetails);
 
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "token-actions";
@@ -617,7 +660,7 @@
       actionsDiv.appendChild(minusBtn);
       actionsDiv.appendChild(plusBtn);
       actionsDiv.appendChild(deleteBtn);
-      tokenItem.appendChild(iconImg);
+      tokenItem.appendChild(tokenMain);
       tokenItem.appendChild(actionsDiv);
       tokenList.appendChild(tokenItem);
     });
@@ -630,11 +673,28 @@
       const tokenItem = document.createElement("div");
       tokenItem.className = "token-item";
 
+      const tokenMain = document.createElement("div");
+      tokenMain.className = "token-main";
+
       const iconImg = document.createElement("img");
       iconImg.className = "token-icon";
       iconImg.src = token.src;
       iconImg.style.borderColor = "#ef4444";
       iconImg.style.borderWidth = "4px";
+
+      const tokenDetails = document.createElement("div");
+      tokenDetails.className = "token-details";
+
+      const tokenName = window.TokenNameLabel && typeof window.TokenNameLabel.create === 'function'
+        ? window.TokenNameLabel.create(token)
+        : document.createElement("div");
+      if (!tokenName.textContent) {
+        tokenName.textContent = token.name || "Token";
+      }
+
+      tokenDetails.appendChild(tokenName);
+      tokenMain.appendChild(iconImg);
+      tokenMain.appendChild(tokenDetails);
 
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "token-actions";
@@ -665,7 +725,7 @@
       actionsDiv.appendChild(minusBtn);
       actionsDiv.appendChild(plusBtn);
       actionsDiv.appendChild(deleteBtn);
-      tokenItem.appendChild(iconImg);
+      tokenItem.appendChild(tokenMain);
       tokenItem.appendChild(actionsDiv);
       enemyTokenList.appendChild(tokenItem);
     });
@@ -769,6 +829,15 @@
     };
   }
 
+  const saveCampaignBtn = document.getElementById('saveCampaignBtn');
+  if (saveCampaignBtn) {
+    saveCampaignBtn.onclick = () => {
+      if (campaignExportFlow && typeof campaignExportFlow.open === 'function') {
+        campaignExportFlow.open();
+      }
+    };
+  }
+
   function createTokenFromUpload(file, targetGroup) {
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -778,6 +847,13 @@
         const centerScreen = { x: width / 2, y: height / 2 };
         const centerWorld = screenToWorld(centerScreen);
         const tokenType = targetGroup === "enemyTokens" ? "enemy" : "player";
+        const tokenName = tokenCreationFlow ? tokenCreationFlow.consume(targetGroup) : pendingTokenName;
+
+        if (!tokenName) {
+          alert('Defina o nome do token antes de selecionar a imagem.');
+          return;
+        }
+
         const token = window.TokenService && typeof window.TokenService.createToken === 'function'
           ? window.TokenService.createToken({
               id: generateTokenId(),
@@ -785,7 +861,7 @@
               x: centerWorld.x,
               y: centerWorld.y,
               size: TOKEN_DEFAULT_SIZE,
-              name: file.name.replace(/\.[^\/\.]+$/, ""),
+              name: tokenName,
               imageObj: img,
               borderColor: tokenType === "enemy" ? "#ef4444" : getNextTokenBorderColor(),
               borderWidth: tokenType === "enemy" ? 4 : 2,
@@ -797,7 +873,7 @@
               x: centerWorld.x,
               y: centerWorld.y,
               size: TOKEN_DEFAULT_SIZE,
-              name: file.name.replace(/\.[^\/\.]+$/, ""),
+              name: tokenName,
               imageObj: img,
               borderColor: tokenType === "enemy" ? "#ef4444" : getNextTokenBorderColor(),
               borderWidth: tokenType === "enemy" ? 4 : 2,
@@ -824,7 +900,11 @@
 
   if (addTokenBtn && tokenImageUpload) {
     addTokenBtn.onclick = () => {
-      tokenImageUpload.click();
+      if (tokenCreationFlow) {
+        tokenCreationFlow.request("tokens");
+      } else {
+        alert('Sistema de criação de token indisponível.');
+      }
     };
 
     tokenImageUpload.onchange = (e) => {
@@ -837,7 +917,11 @@
 
   if (addEnemyTokenBtn && enemyTokenImageUpload) {
     addEnemyTokenBtn.onclick = () => {
-      enemyTokenImageUpload.click();
+      if (tokenCreationFlow) {
+        tokenCreationFlow.request("enemyTokens");
+      } else {
+        alert('Sistema de criação de token indisponível.');
+      }
     };
 
     enemyTokenImageUpload.onchange = (e) => {
@@ -1430,12 +1514,22 @@
       if (!editorEl) return;
       if (!campaign) editorEl.textContent = "Nenhuma campanha carregada.";
       else editorEl.textContent = JSON.stringify(campaign, null, 2);
+
+      if (campaign && window.CampaignService && typeof window.CampaignService.setCampaignInfo === 'function') {
+        window.CampaignService.setCampaignInfo({
+          id: campaign.id || null,
+          name: campaign.name || null
+        });
+      }
     },
     getState() {
       return state;
     },
     getCamera() {
       return camera;
+    },
+    getZoom() {
+      return zoom;
     },
     saveState() {
       return {
@@ -1446,6 +1540,38 @@
   };
 
   window.VTT = VTT;
+
+  // Inicializar painéis de informação da campanha (esquerda/direita)
+  (function(){
+    try {
+      var leftHeader = document.querySelector('#sidebar .sidebar-header');
+      var rightHeader = document.querySelector('#rightToolbar .rt-header');
+
+      if (window.CampaignInfoPanel && typeof window.CampaignInfoPanel.createPanel === 'function'){
+        var leftPanel = window.CampaignInfoPanel.createPanel();
+        var rightPanel = window.CampaignInfoPanel.createPanel();
+
+        if (leftHeader && leftHeader.parentNode) {
+          leftHeader.parentNode.insertBefore(leftPanel.el, leftHeader.nextSibling);
+        }
+
+        if (rightHeader && rightHeader.parentNode) {
+          rightHeader.parentNode.insertBefore(rightPanel.el, rightHeader.nextSibling);
+        }
+
+        var updateFn = function(info){ leftPanel.set(info); rightPanel.set(info); };
+
+        if (window.CampaignService && typeof window.CampaignService.subscribe === 'function'){
+          window.CampaignService.subscribe(updateFn);
+        } else {
+          try {
+            var stored = JSON.parse(localStorage.getItem('gamerpg_campaign_info'));
+            if (stored) updateFn(stored);
+          } catch(_){}
+        }
+      }
+    } catch (e) {}
+  })();
 
   // =====================
   // INITIALIZATION
