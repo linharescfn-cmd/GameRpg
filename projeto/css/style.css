@@ -41,51 +41,28 @@ body.dark-theme{
   justify-content:center;
   padding:20px;
   box-sizing:border-box;
-  #sidebarOpen{
-    width:40px;
-    height:40px;
-    border-radius:8px;
-    background:#222;
-    color:white;
-    border:none;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    flex:0 0 auto;
-    box-shadow:0 8px 20px rgba(0,0,0,0.25);
-  }
+}
 
-  #sidebarOpen:hover{
-    background:#333;
-  }
+/* Game Master Card (Square with rounded corners) */
+.game-master-card{
+  background:linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+  border:2px solid #3b82f6;
+  border-radius:20px;
+  padding:60px;
+  width:100%;
+  max-width:500px;
+  aspect-ratio:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 20px 60px rgba(59, 130, 246, 0.3);
+  gap:40px;
+}
 
-  .sidebar-reveal{
-    position:fixed;
-    left:12px;
-    top:50%;
-    transform:translateY(-50%);
-    width:44px;
-    height:44px;
-    border-radius:8px;
-    background:#222;
-    color:white;
-    border:none;
-    z-index:1000;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    box-shadow:0 8px 20px rgba(0,0,0,0.4);
-  }
-
-  .sidebar-reveal:hover{
-    background:#333;
-  }
-
-  .sidebar-reveal.hidden{
-    display:none;
-  }
+/* Game Master Title */
+.game-master-title{
+  margin:0;
   font-size:2.5rem;
   font-weight:bold;
   color:var(--dark-text);
